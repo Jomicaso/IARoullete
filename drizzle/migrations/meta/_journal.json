@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789689029856,
+      "tag": "0000_stabilize_roulette_live_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789726944611,
+      "tag": "0001_stabilize_roulette_monitor_and_alert_delivery",
+      "breakpoints": true
+    }
+  ]
+}
