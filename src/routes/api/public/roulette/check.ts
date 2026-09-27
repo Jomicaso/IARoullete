@@ -162,25 +162,6 @@ async function flushTelegramOutbox(limit = 6) {
   }
 }
 
-function scoreboard(state: State) {
-  const total = state.wins + state.losses;
-  const rate = total > 0 ? ((state.wins / total) * 100).toFixed(2) : "0.00";
-  return (
-    `📄 <b>PLACAR DO DIA</b>\n` +
-    `🟢: ${state.wins} 🔴: ${state.losses}\n` +
-    `📊 <b>GANHOS SEGUIDOS: ${state.winStreak}</b>\n` +
-    `🎯 <b>TAXA DE ASSERTIVIDADE: ${rate}%</b>` +
-    affiliateLinks()
-  );
-}
-
-function analyzingMessage() {
-  const { hora } = lisbon();
-  return (
-    `🕵️ <b>ANALISANDO O PRÓXIMO SINAL, FIQUE ATENTO</b> 🧠💸\n` + `🕒 ${hora}` + affiliateLinks()
-  );
-}
-
 async function processSpin(
   spins: Spin[],
   index: number,
@@ -205,12 +186,7 @@ async function processSpin(
       state.last3AlertedSpinId = spin.id;
       console.info(`roulette signal WIN number=${spin.number}`);
       if (deliver)
-        await broadcast(
-          `${spin.id}:win`,
-          `✅✅✅ <b>WIN (${spin.number})</b> ✅✅✅` + affiliateLinks(),
-        );
-      if (deliver) await broadcast(`${spin.id}:scoreboard`, scoreboard(state));
-      if (deliver) await broadcast(`${spin.id}:analyzing`, analyzingMessage());
+        await broadcast(`${spin.id}:win`, `🟢 <b>GREEN (${spin.number})</b>` + affiliateLinks());
       await saveState(state);
       return "win";
     }
@@ -226,8 +202,7 @@ async function processSpin(
         await broadcast(
           `${spin.id}:gale:${state.gale}`,
           `⚠️ <b>${label}</b>\n` +
-            `🎡 <b>ENTRAR: ${state.betEntryLabel.toUpperCase()}</b>\n` +
-            `🎯 <b>COBRIR O ZERO (🟢)</b>\n` +
+            `🎯 <b>MANTER: ${state.betEntryLabel.toUpperCase()}</b>\n` +
             `🕒 ${hora}` +
             affiliateLinks(),
         );
@@ -244,14 +219,7 @@ async function processSpin(
     state.last3AlertedSpinId = spin.id;
     console.info(`roulette signal LOSS number=${spin.number}`);
     if (deliver)
-      await broadcast(
-        `${spin.id}:loss`,
-        `🔴🔴🔴 <b>LOSS (${spin.number})</b> 🔴🔴🔴\n` +
-          `A IA vai recalcular a estratégia antes do próximo sinal.` +
-          affiliateLinks(),
-      );
-    if (deliver) await broadcast(`${spin.id}:scoreboard`, scoreboard(state));
-    if (deliver) await broadcast(`${spin.id}:analyzing`, analyzingMessage());
+      await broadcast(`${spin.id}:loss`, `🔴 <b>RED (${spin.number})</b>` + affiliateLinks());
     await saveState(state);
     return "loss";
   }
@@ -274,13 +242,9 @@ async function processSpin(
     if (deliver)
       await broadcast(
         `${spin.id}:strategy`,
-        `🧠 <b>ESTRATÉGIA IA — AO VIVO</b>\n` +
-          `🎯 Mercado: <b>${strategy.marketLabel}</b>\n` +
-          `🎡 <b>ENTRAR: ${strategy.entryLabel.toUpperCase()}</b>\n` +
-          `🧩 Leitura: ${strategy.pattern}\n` +
-          `📈 Cobertura recente: ${strategy.recentHitRate}% | histórica: ${strategy.historicalHitRate}%\n` +
-          `📐 Probabilidade-base: ${strategy.baselineRate}%\n` +
-          `📊 Força do padrão: ${strategy.strength}%\n` +
+        `🧠 <b>SINAL IA — ${strategy.marketLabel.toUpperCase()}</b>\n` +
+          `🎯 <b>ENTRAR: ${strategy.entryLabel.toUpperCase()}</b>\n` +
+          `📊 <b>CONFIANÇA: ${strategy.strength}%</b>\n` +
           `🕒 ${hora}` +
           affiliateLinks(),
       );
