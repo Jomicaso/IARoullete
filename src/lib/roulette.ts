@@ -5,8 +5,10 @@ export type Spin = {
   settledAt: string;
 };
 
-export const SPINS_API =
-  "https://api-cs.casino.org/svc-evolution-game-events/api/xxxtremelightningroulette?page=0&size=40&sort=data.settledAt,desc&duration=6";
+const SPINS_API =
+  "https://api-cs.casino.org/svc-evolution-game-events/api/xxxtremelightningroulette";
+const HISTORY_CACHE_MS = 10 * 60 * 1_000;
+let historyCache: { expiresAt: number; spins: Spin[] } | null = null;
 
 export const ENTRY_STREAK = 2;
 export const MAX_GALES = 3;
@@ -46,7 +48,7 @@ export class RouletteRateLimitError extends Error {
   }
 }
 
-export async function fetchSpins(): Promise<Spin[]> {
+async function fetchSpinBatch(size: number, duration: number): Promise<Spin[]> {
   let raw: Array<{
     id: string;
     data?: {
@@ -56,7 +58,14 @@ export async function fetchSpins(): Promise<Spin[]> {
   }> = [];
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const url = `${SPINS_API}&_=${Date.now()}-${attempt}`;
+    const query = new URLSearchParams({
+      page: "0",
+      size: String(size),
+      sort: "data.settledAt,desc",
+      duration: String(duration),
+      _: `${Date.now()}-${attempt}`,
+    });
+    const url = `${SPINS_API}?${query}`;
     const res = await fetch(url, {
       cache: "no-store",
       headers: {
@@ -93,6 +102,28 @@ export async function fetchSpins(): Promise<Spin[]> {
       color: r.data!.result!.outcome!.color ?? "",
       settledAt: r.data!.settledAt ?? "",
     }));
+}
+
+export async function fetchSpins(): Promise<Spin[]> {
+  const live = await fetchSpinBatch(40, 6);
+  let history = historyCache?.spins ?? [];
+
+  if (!historyCache || historyCache.expiresAt <= Date.now()) {
+    try {
+      history = await fetchSpinBatch(500, 72);
+      historyCache = { expiresAt: Date.now() + HISTORY_CACHE_MS, spins: history };
+    } catch (error) {
+      console.error("roulette history refresh failed", error);
+    }
+  }
+
+  const merged = new Map<string, Spin>();
+  for (const spin of [...live, ...history]) merged.set(spin.id, spin);
+  const spins = [...merged.values()]
+    .sort((a, b) => Date.parse(b.settledAt) - Date.parse(a.settledAt))
+    .slice(0, 500);
+  historyCache = { expiresAt: historyCache?.expiresAt ?? Date.now() + HISTORY_CACHE_MS, spins };
+  return spins;
 }
 
 /** spins must be newest-first. Returns the current run of the same column. */

@@ -11,12 +11,25 @@ import {
 } from "@/lib/roulette";
 import {
   analyzeStrategy,
+  backtestStrategies,
   strategyEntryLabel,
+  strategySequenceReturn,
   strategyWins,
+  type StrategyLearning,
   type StrategyMarket,
 } from "@/lib/strategy";
 
 const STATE_KEY = "ia_roulette_state";
+const MAX_DAILY_REDS = 2;
+
+type PerformanceRecord = {
+  market: StrategyMarket;
+  selection: string;
+  strength: number;
+  green: boolean;
+  gale: number;
+  returnRate: number;
+};
 
 type State = {
   last2AlertedSpinId: string | null;
@@ -26,9 +39,12 @@ type State = {
   betMarket: StrategyMarket;
   betSelection: string;
   betEntryLabel: string;
+  betStrength: number;
   gale: number; // 0 = entrada, 1..3 = gales
   betActive: boolean;
   skipNextEntryAfterLoss: boolean;
+  cooldownSpins: number;
+  performanceRecords: PerformanceRecord[];
   // daily stats
   day: string;
   wins: number;
@@ -43,9 +59,12 @@ const defaultState: State = {
   betMarket: "columns",
   betSelection: "exclude:1",
   betEntryLabel: "2ª e 3ª colunas + zero",
+  betStrength: 0,
   gale: 0,
   betActive: false,
   skipNextEntryAfterLoss: false,
+  cooldownSpins: 0,
+  performanceRecords: [],
   day: "",
   wins: 0,
   losses: 0,
@@ -91,6 +110,65 @@ async function saveState(state: State) {
     .from("alert_state")
     .upsert({ id: STATE_KEY, value: JSON.stringify(state), updated_at: new Date().toISOString() });
   if (error) throw new Error(`Failed to save roulette state: ${error.message}`);
+}
+
+function actualLearning(records: PerformanceRecord[]): StrategyLearning {
+  const totals: Record<string, { samples: number; totalReturn: number; wins: number }> = {};
+  for (const record of records) {
+    const key = `${record.market}:${record.selection}`;
+    const row = (totals[key] ??= { samples: 0, totalReturn: 0, wins: 0 });
+    row.samples += 1;
+    row.totalReturn += record.returnRate;
+    row.wins += record.green ? 1 : 0;
+  }
+  return Object.fromEntries(
+    Object.entries(totals).map(([key, row]) => [
+      key,
+      {
+        samples: row.samples,
+        averageReturn: row.totalReturn / row.samples,
+        winRate: row.wins / row.samples,
+      },
+    ]),
+  );
+}
+
+function mergeLearning(backtest: StrategyLearning, actual: StrategyLearning): StrategyLearning {
+  const merged: StrategyLearning = { ...backtest };
+  for (const [key, live] of Object.entries(actual)) {
+    const historical = merged[key];
+    if (!historical) {
+      merged[key] = live;
+      continue;
+    }
+    const liveWeight = live.samples * 3;
+    const samples = historical.samples + liveWeight;
+    merged[key] = {
+      samples,
+      averageReturn:
+        (historical.averageReturn * historical.samples + live.averageReturn * liveWeight) / samples,
+      winRate: (historical.winRate * historical.samples + live.winRate * liveWeight) / samples,
+    };
+  }
+  return merged;
+}
+
+function recordPerformance(state: State, spin: Spin, green: boolean) {
+  state.performanceRecords.push({
+    market: state.betMarket,
+    selection: state.betSelection,
+    strength: state.betStrength,
+    green,
+    gale: state.gale,
+    returnRate: strategySequenceReturn(
+      spin,
+      state.betMarket,
+      state.betSelection,
+      state.gale,
+      green,
+    ),
+  });
+  state.performanceRecords = state.performanceRecords.slice(-500);
 }
 
 async function getActiveSubscribers() {
@@ -178,6 +256,7 @@ async function processSpin(
     const won = strategyWins(spin, state.betMarket, state.betSelection);
 
     if (won) {
+      recordPerformance(state, spin, true);
       state.wins += 1;
       state.winStreak += 1;
       state.betActive = false;
@@ -210,11 +289,13 @@ async function processSpin(
       return `gale_${state.gale}`;
     }
 
+    recordPerformance(state, spin, false);
     state.losses += 1;
     state.winStreak = 0;
     state.betActive = false;
     state.gale = 0;
-    state.skipNextEntryAfterLoss = false;
+    state.skipNextEntryAfterLoss = true;
+    state.cooldownSpins = 1;
     state.last2AlertedSpinId = spin.id;
     state.last3AlertedSpinId = spin.id;
     console.info(`roulette signal LOSS number=${spin.number}`);
@@ -226,10 +307,28 @@ async function processSpin(
 
   // ---- Sem sinal ativo: comparar padroes e preparar a proxima estrategia ----
   if (spin.id !== state.last3AlertedSpinId) {
-    const strategy = analyzeStrategy(spins.slice(index));
     state.last3AlertedSpinId = spin.id;
     state.last2AlertedSpinId = spin.id;
     state.lastProcessedSpinId = spin.id;
+
+    if (state.losses >= MAX_DAILY_REDS) {
+      await saveState(state);
+      return "daily_risk_limit";
+    }
+
+    if (state.cooldownSpins > 0) {
+      state.cooldownSpins -= 1;
+      state.skipNextEntryAfterLoss = state.cooldownSpins > 0;
+      await saveState(state);
+      return "cooldown_after_red";
+    }
+
+    const availableHistory = spins.slice(index);
+    const learning = mergeLearning(
+      backtestStrategies(availableHistory),
+      actualLearning(state.performanceRecords),
+    );
+    const strategy = analyzeStrategy(availableHistory, learning);
 
     if (!strategy) {
       await saveState(state);
@@ -252,6 +351,7 @@ async function processSpin(
     state.betMarket = strategy.market;
     state.betSelection = strategy.selection;
     state.betEntryLabel = strategy.entryLabel;
+    state.betStrength = strategy.strength;
     state.gale = 0;
     await saveState(state);
     return "strategy_ready";
@@ -286,6 +386,7 @@ async function runOnce(): Promise<{ status: string; count: number }> {
     state.losses = 0;
     state.winStreak = 0;
     state.skipNextEntryAfterLoss = false;
+    state.cooldownSpins = 0;
   }
 
   if (!state.lastProcessedSpinId) {

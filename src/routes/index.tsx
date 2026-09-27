@@ -219,7 +219,7 @@ function Index() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">A recolher histórico</p>
-              <p className="mt-1 text-3xl font-black">São necessários pelo menos 20 resultados</p>
+              <p className="mt-1 text-3xl font-black">São necessários pelo menos 40 resultados</p>
             </>
           )}
           <p className="mt-2 text-xs opacity-80">
