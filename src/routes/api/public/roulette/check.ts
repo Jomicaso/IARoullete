@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   affiliateLinks,
-  columnOf,
   currentStreak,
   fetchSpins,
   MAX_GALES,
@@ -10,23 +9,23 @@ import {
   telegramCall,
   type Spin,
 } from "@/lib/roulette";
-import { analyzeStrategy } from "@/lib/strategy";
+import {
+  analyzeStrategy,
+  strategyEntryLabel,
+  strategyWins,
+  type StrategyMarket,
+} from "@/lib/strategy";
 
 const STATE_KEY = "ia_roulette_state";
-
-const ORD: Record<number, string> = { 1: "1ª", 2: "2ª", 3: "3ª" };
-
-function otherColumnsOrd(col: number): string {
-  const [a, b] = [1, 2, 3].filter((c) => c !== col);
-  return `${ORD[a ?? 1]} e ${ORD[b ?? 2]}`;
-}
 
 type State = {
   last2AlertedSpinId: string | null;
   last3AlertedSpinId: string | null;
   lastProcessedSpinId: string | null;
   // active bet
-  betColumn: 0 | 1 | 2 | 3; // locked column we bet AGAINST
+  betMarket: StrategyMarket;
+  betSelection: string;
+  betEntryLabel: string;
   gale: number; // 0 = entrada, 1..3 = gales
   betActive: boolean;
   skipNextEntryAfterLoss: boolean;
@@ -41,7 +40,9 @@ const defaultState: State = {
   last2AlertedSpinId: null,
   last3AlertedSpinId: null,
   lastProcessedSpinId: null,
-  betColumn: 0,
+  betMarket: "columns",
+  betSelection: "exclude:1",
+  betEntryLabel: "2ª e 3ª colunas + zero",
   gale: 0,
   betActive: false,
   skipNextEntryAfterLoss: false,
@@ -71,7 +72,14 @@ async function loadState(): Promise<State> {
     .maybeSingle();
   if (!data?.value) return { ...defaultState };
   try {
-    return { ...defaultState, ...JSON.parse(data.value) } as State;
+    const saved = JSON.parse(data.value) as Partial<State> & { betColumn?: number };
+    const state = { ...defaultState, ...saved } as State;
+    if (!saved.betMarket && saved.betColumn && saved.betColumn >= 1 && saved.betColumn <= 3) {
+      state.betMarket = "columns";
+      state.betSelection = `exclude:${saved.betColumn}`;
+      state.betEntryLabel = strategyEntryLabel(state.betMarket, state.betSelection);
+    }
+    return state;
   } catch {
     return { ...defaultState };
   }
@@ -186,8 +194,7 @@ async function processSpin(
   // ---- Active bet resolution ----
   if (state.betActive) {
     state.lastProcessedSpinId = spin.id;
-    const col = columnOf(spin.number);
-    const won = col !== state.betColumn; // zero also wins (cobrir o zero)
+    const won = strategyWins(spin, state.betMarket, state.betSelection);
 
     if (won) {
       state.wins += 1;
@@ -219,7 +226,7 @@ async function processSpin(
         await broadcast(
           `${spin.id}:gale:${state.gale}`,
           `⚠️ <b>${label}</b>\n` +
-            `🎡 <b>ENTRAR ${otherColumnsOrd(state.betColumn)} COLUNA</b>\n` +
+            `🎡 <b>ENTRAR: ${state.betEntryLabel.toUpperCase()}</b>\n` +
             `🎯 <b>COBRIR O ZERO (🟢)</b>\n` +
             `🕒 ${hora}` +
             affiliateLinks(),
@@ -262,23 +269,25 @@ async function processSpin(
     }
 
     console.info(
-      `ia strategy excluded_column=${strategy.excludedColumn} confidence=${strategy.confidence}`,
+      `ia strategy market=${strategy.market} selection=${strategy.selection} strength=${strategy.strength}`,
     );
     if (deliver)
       await broadcast(
         `${spin.id}:strategy`,
         `🧠 <b>ESTRATÉGIA IA — AO VIVO</b>\n` +
-          `🎡 <b>ENTRAR ${strategy.betColumns[0]}ª E ${strategy.betColumns[1]}ª COLUNA</b>\n` +
-          `🎯 <b>COBRIR O ZERO (🟢)</b>\n` +
-          `🚫 Evitar: ${strategy.excludedColumn}ª coluna\n` +
-          `📊 Modelo: ${strategy.pattern}\n` +
+          `🎯 Mercado: <b>${strategy.marketLabel}</b>\n` +
+          `🎡 <b>ENTRAR: ${strategy.entryLabel.toUpperCase()}</b>\n` +
+          `🧩 Leitura: ${strategy.pattern}\n` +
           `📈 Cobertura recente: ${strategy.recentHitRate}% | histórica: ${strategy.historicalHitRate}%\n` +
-          `📊 Confiança estatística: ${strategy.confidence}%\n` +
+          `📐 Probabilidade-base: ${strategy.baselineRate}%\n` +
+          `📊 Força do padrão: ${strategy.strength}%\n` +
           `🕒 ${hora}` +
           affiliateLinks(),
       );
     state.betActive = true;
-    state.betColumn = strategy.excludedColumn;
+    state.betMarket = strategy.market;
+    state.betSelection = strategy.selection;
+    state.betEntryLabel = strategy.entryLabel;
     state.gale = 0;
     await saveState(state);
     return "strategy_ready";

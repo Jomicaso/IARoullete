@@ -1,11 +1,14 @@
 import { columnOf, type Spin } from "./roulette.ts";
 
-export type RouletteColumn = 1 | 2 | 3;
+export type StrategyMarket = "columns" | "dozens" | "color" | "parity" | "range";
 
 export type StrategyRecommendation = {
-  excludedColumn: RouletteColumn;
-  betColumns: [RouletteColumn, RouletteColumn];
-  confidence: number;
+  market: StrategyMarket;
+  marketLabel: string;
+  selection: string;
+  entryLabel: string;
+  strength: number;
+  baselineRate: number;
   historicalHitRate: number;
   recentHitRate: number;
   transitionHitRate: number | null;
@@ -14,79 +17,234 @@ export type StrategyRecommendation = {
   pattern: string;
 };
 
+type Candidate = {
+  market: StrategyMarket;
+  marketLabel: string;
+  selection: string;
+  entryLabel: string;
+  baselineRate: number;
+  matches: (spin: Spin) => boolean;
+  context: (spin: Spin) => string | null;
+};
+
 const HISTORY_SIZE = 40;
 const RECENT_SIZE = 12;
-const MIN_HISTORY = 8;
+const MIN_HISTORY = 20;
 
-function hitRate(spins: Spin[], excludedColumn: RouletteColumn) {
-  if (spins.length === 0) return 0;
-  const hits = spins.filter((spin) => columnOf(spin.number) !== excludedColumn).length;
-  return hits / spins.length;
+const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+
+function dozenOf(number: number) {
+  if (number === 0) return 0;
+  return Math.ceil(number / 12);
 }
 
-function transitionOutcomes(spins: Spin[], fromColumn: number) {
+function colorOf(spin: Spin) {
+  if (spin.number === 0) return "green";
+  const supplied = spin.color.toLowerCase();
+  if (supplied.includes("red")) return "red";
+  if (supplied.includes("black")) return "black";
+  return RED_NUMBERS.has(spin.number) ? "red" : "black";
+}
+
+function parityOf(number: number) {
+  if (number === 0) return "zero";
+  return number % 2 === 0 ? "even" : "odd";
+}
+
+function rangeOf(number: number) {
+  if (number === 0) return "zero";
+  return number <= 18 ? "low" : "high";
+}
+
+function candidates(): Candidate[] {
+  const columnCandidates = [1, 2, 3].map((excluded) => {
+    const selected = [1, 2, 3].filter((column) => column !== excluded);
+    return {
+      market: "columns" as const,
+      marketLabel: "Colunas",
+      selection: `exclude:${excluded}`,
+      entryLabel: `${selected[0]}ª e ${selected[1]}ª colunas + zero`,
+      baselineRate: 25 / 37,
+      matches: (spin: Spin) => spin.number === 0 || columnOf(spin.number) !== excluded,
+      context: (spin: Spin) => {
+        const column = columnOf(spin.number);
+        return column === 0 ? null : `coluna:${column}`;
+      },
+    };
+  });
+
+  const dozenCandidates = [1, 2, 3].map((excluded) => {
+    const selected = [1, 2, 3].filter((dozen) => dozen !== excluded);
+    return {
+      market: "dozens" as const,
+      marketLabel: "Dúzias",
+      selection: `exclude:${excluded}`,
+      entryLabel: `${selected[0]}ª e ${selected[1]}ª dúzias + zero`,
+      baselineRate: 25 / 37,
+      matches: (spin: Spin) => spin.number === 0 || dozenOf(spin.number) !== excluded,
+      context: (spin: Spin) => {
+        const dozen = dozenOf(spin.number);
+        return dozen === 0 ? null : `dúzia:${dozen}`;
+      },
+    };
+  });
+
+  const singleChanceCandidates: Candidate[] = [
+    {
+      market: "color",
+      marketLabel: "Cor",
+      selection: "red",
+      entryLabel: "vermelho + zero",
+      baselineRate: 19 / 37,
+      matches: (spin) => spin.number === 0 || colorOf(spin) === "red",
+      context: (spin) => colorOf(spin),
+    },
+    {
+      market: "color",
+      marketLabel: "Cor",
+      selection: "black",
+      entryLabel: "preto + zero",
+      baselineRate: 19 / 37,
+      matches: (spin) => spin.number === 0 || colorOf(spin) === "black",
+      context: (spin) => colorOf(spin),
+    },
+    {
+      market: "parity",
+      marketLabel: "Paridade",
+      selection: "even",
+      entryLabel: "par + zero",
+      baselineRate: 19 / 37,
+      matches: (spin) => spin.number === 0 || parityOf(spin.number) === "even",
+      context: (spin) => parityOf(spin.number),
+    },
+    {
+      market: "parity",
+      marketLabel: "Paridade",
+      selection: "odd",
+      entryLabel: "ímpar + zero",
+      baselineRate: 19 / 37,
+      matches: (spin) => spin.number === 0 || parityOf(spin.number) === "odd",
+      context: (spin) => parityOf(spin.number),
+    },
+    {
+      market: "range",
+      marketLabel: "Baixo/Alto",
+      selection: "low",
+      entryLabel: "1–18 + zero",
+      baselineRate: 19 / 37,
+      matches: (spin) => spin.number === 0 || rangeOf(spin.number) === "low",
+      context: (spin) => rangeOf(spin.number),
+    },
+    {
+      market: "range",
+      marketLabel: "Baixo/Alto",
+      selection: "high",
+      entryLabel: "19–36 + zero",
+      baselineRate: 19 / 37,
+      matches: (spin) => spin.number === 0 || rangeOf(spin.number) === "high",
+      context: (spin) => rangeOf(spin.number),
+    },
+  ];
+
+  return [...columnCandidates, ...dozenCandidates, ...singleChanceCandidates];
+}
+
+function hitRate(spins: Spin[], matches: Candidate["matches"]) {
+  if (spins.length === 0) return 0;
+  return spins.filter(matches).length / spins.length;
+}
+
+function transitionOutcomes(spins: Spin[], candidate: Candidate) {
+  const latestContext = candidate.context(spins[0]!);
+  if (!latestContext || latestContext === "zero" || latestContext === "green") return [];
+
   const outcomes: Spin[] = [];
   for (let index = spins.length - 1; index >= 1; index -= 1) {
     const previous = spins[index];
     const next = spins[index - 1];
-    if (previous && next && columnOf(previous.number) === fromColumn) outcomes.push(next);
+    if (previous && next && candidate.context(previous) === latestContext) outcomes.push(next);
   }
   return outcomes;
 }
 
-/**
- * Compara as tres coberturas possiveis. Os resultados devem estar do mais recente
- * para o mais antigo. A recomendacao usa o historico recebido em tempo real.
- */
+export function strategyWins(spin: Spin, market: StrategyMarket, selection: string) {
+  const candidate = candidates().find(
+    (item) => item.market === market && item.selection === selection,
+  );
+  return candidate?.matches(spin) ?? false;
+}
+
+export function strategyEntryLabel(market: StrategyMarket, selection: string) {
+  return (
+    candidates().find((item) => item.market === market && item.selection === selection)
+      ?.entryLabel ?? "estratégia selecionada + zero"
+  );
+}
+
+/** Compara mercados diferentes pelo desvio observado face à probabilidade-base de cada aposta. */
 export function analyzeStrategy(spins: Spin[]): StrategyRecommendation | null {
   const history = spins.slice(0, HISTORY_SIZE);
   if (history.length < MIN_HISTORY) return null;
+  const recent = history.slice(0, RECENT_SIZE);
 
-  const recent = history.slice(0, Math.min(RECENT_SIZE, history.length));
-  const latestColumn = columnOf(history[0]!.number);
-  const transitions = latestColumn === 0 ? [] : transitionOutcomes(history, latestColumn);
-
-  const candidates = ([1, 2, 3] as RouletteColumn[]).map((excludedColumn) => {
-    const historicalHitRate = hitRate(history, excludedColumn);
-    const recentHitRate = hitRate(recent, excludedColumn);
-    const transitionHitRate = transitions.length >= 3 ? hitRate(transitions, excludedColumn) : null;
-    const score =
-      transitionHitRate === null
-        ? historicalHitRate * 0.45 + recentHitRate * 0.55
-        : historicalHitRate * 0.3 + recentHitRate * 0.45 + transitionHitRate * 0.25;
+  const ranked = candidates().map((candidate) => {
+    const transitions = transitionOutcomes(history, candidate);
+    const historicalRate = hitRate(history, candidate.matches);
+    const recentRate = hitRate(recent, candidate.matches);
+    const transitionRate = transitions.length >= 3 ? hitRate(transitions, candidate.matches) : null;
+    const observedRate =
+      transitionRate === null
+        ? historicalRate * 0.4 + recentRate * 0.6
+        : historicalRate * 0.3 + recentRate * 0.45 + transitionRate * 0.25;
+    const edge = observedRate - candidate.baselineRate;
+    const instability = Math.abs(recentRate - historicalRate);
+    const rankingScore = edge - instability * 0.12;
+    const strength = Math.max(
+      1,
+      Math.min(
+        99,
+        Math.round(50 + edge * 180 - instability * 30 + Math.min(transitions.length, 8)),
+      ),
+    );
 
     return {
-      excludedColumn,
-      historicalHitRate,
-      recentHitRate,
-      transitionHitRate,
-      score,
+      candidate,
+      transitions,
+      historicalRate,
+      recentRate,
+      transitionRate,
+      rankingScore,
+      strength,
     };
   });
 
-  candidates.sort(
+  ranked.sort(
     (a, b) =>
-      b.score - a.score || b.recentHitRate - a.recentHitRate || a.excludedColumn - b.excludedColumn,
+      b.rankingScore - a.rankingScore ||
+      b.recentRate - a.recentRate ||
+      b.historicalRate - a.historicalRate,
   );
 
-  const best = candidates[0]!;
-  const betColumns = ([1, 2, 3] as RouletteColumn[]).filter(
-    (column) => column !== best.excludedColumn,
-  ) as [RouletteColumn, RouletteColumn];
+  const best = ranked[0];
+  if (!best) return null;
+  const { candidate } = best;
+  const latestContext = candidate.context(history[0]!);
 
   return {
-    excludedColumn: best.excludedColumn,
-    betColumns,
-    confidence: Math.round(best.score * 100),
-    historicalHitRate: Math.round(best.historicalHitRate * 100),
-    recentHitRate: Math.round(best.recentHitRate * 100),
-    transitionHitRate:
-      best.transitionHitRate === null ? null : Math.round(best.transitionHitRate * 100),
+    market: candidate.market,
+    marketLabel: candidate.marketLabel,
+    selection: candidate.selection,
+    entryLabel: candidate.entryLabel,
+    strength: best.strength,
+    baselineRate: Math.round(candidate.baselineRate * 100),
+    historicalHitRate: Math.round(best.historicalRate * 100),
+    recentHitRate: Math.round(best.recentRate * 100),
+    transitionHitRate: best.transitionRate === null ? null : Math.round(best.transitionRate * 100),
     sampleSize: history.length,
-    transitionSamples: transitions.length,
+    transitionSamples: best.transitions.length,
     pattern:
-      best.transitionHitRate === null
-        ? "frequencia recente e historica"
-        : `transicoes depois da coluna ${latestColumn}`,
+      best.transitionRate === null
+        ? "frequência histórica + tendência recente"
+        : `frequência + tendência + transições após ${latestContext}`,
   };
 }

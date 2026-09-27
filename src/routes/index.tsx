@@ -56,9 +56,12 @@ function beep() {
 
 type AlertItem = {
   id: string;
-  excludedColumn: number;
-  betColumns: [number, number];
-  confidence: number;
+  marketLabel: string;
+  entryLabel: string;
+  strength: number;
+  baselineRate: number;
+  historicalHitRate: number;
+  recentHitRate: number;
   sampleSize: number;
   pattern: string;
   numbers: number[];
@@ -91,12 +94,15 @@ function Index() {
         const strategy = analyzeStrategy(data);
         if (head && strategy && lastAlertId.current !== head.id) {
           lastAlertId.current = head.id;
-          const label = `Estratégia: ${strategy.betColumns[0]}ª e ${strategy.betColumns[1]}ª colunas`;
+          const label = `Estratégia: ${strategy.entryLabel}`;
           const item: AlertItem = {
             id: head.id,
-            excludedColumn: strategy.excludedColumn,
-            betColumns: strategy.betColumns,
-            confidence: strategy.confidence,
+            marketLabel: strategy.marketLabel,
+            entryLabel: strategy.entryLabel,
+            strength: strategy.strength,
+            baselineRate: strategy.baselineRate,
+            historicalHitRate: strategy.historicalHitRate,
+            recentHitRate: strategy.recentHitRate,
             sampleSize: strategy.sampleSize,
             pattern: strategy.pattern,
             numbers: data.slice(0, 8).map((s) => s.number),
@@ -108,7 +114,7 @@ function Index() {
           if (soundOn) beep();
           if ("Notification" in window && Notification.permission === "granted") {
             new Notification(label, {
-              body: `Evitar a ${strategy.excludedColumn}ª coluna · Confiança estatística ${strategy.confidence}%`,
+              body: `${strategy.marketLabel} · Força do padrão ${strategy.strength}%`,
             });
           }
         }
@@ -141,8 +147,7 @@ function Index() {
                 </p>
                 <p className="mt-1 text-3xl font-black leading-none">{banner.label}</p>
                 <p className="mt-2 text-sm font-semibold">
-                  Evitar {banner.excludedColumn}ª coluna · Confiança {banner.confidence}% ·{" "}
-                  {banner.at}
+                  {banner.marketLabel} · Força do padrão {banner.strength}% · {banner.at}
                 </p>
                 <p className="mt-1 text-sm opacity-90">{banner.numbers.join(" · ")}</p>
                 <p className="mt-1 text-xs font-bold opacity-90">
@@ -167,9 +172,9 @@ function Index() {
             IARoullete — Análise de Estratégias
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Compara frequência recente, histórico e transições entre colunas para escolher uma
-            cobertura e enviar sinais em tempo real. A análise estatística não garante o próximo
-            resultado.
+            Compara frequência, tendências e transições em colunas, dúzias, cores, paridade e
+            baixo/alto para escolher a entrada com melhor evidência observada. A análise estatística
+            não garante o próximo resultado.
           </p>
         </header>
 
@@ -204,18 +209,17 @@ function Index() {
               <p className="text-sm font-semibold uppercase tracking-widest">
                 Estratégia atual · Ao vivo
               </p>
-              <p className="mt-1 text-3xl font-black">
-                {strategy.betColumns[0]}ª e {strategy.betColumns[1]}ª colunas + zero
-              </p>
+              <p className="mt-1 text-3xl font-black">{strategy.entryLabel}</p>
               <p className="mt-2 text-xs font-bold opacity-90">
-                Evitar {strategy.excludedColumn}ª coluna · Confiança estatística{" "}
-                {strategy.confidence}% · Máximo de 3 gales
+                {strategy.marketLabel} · Força do padrão {strategy.strength}% · Recente{" "}
+                {strategy.recentHitRate}% · Histórico {strategy.historicalHitRate}% · Máximo de 3
+                gales
               </p>
             </>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">A recolher histórico</p>
-              <p className="mt-1 text-3xl font-black">São necessários pelo menos 8 resultados</p>
+              <p className="mt-1 text-3xl font-black">São necessários pelo menos 20 resultados</p>
             </>
           )}
           <p className="mt-2 text-xs opacity-80">
@@ -284,11 +288,12 @@ function Index() {
                 <li
                   key={a.id}
                   className={`rounded-lg border px-3 py-2 text-sm ${
-                    a.confidence >= 70 ? "border-primary bg-card" : "border-yellow-500/50 bg-card"
+                    a.strength >= 70 ? "border-primary bg-card" : "border-yellow-500/50 bg-card"
                   }`}
                 >
-                  <span className="font-bold text-primary">{a.label}</span> · Evitar{" "}
-                  {a.excludedColumn}ª · Confiança {a.confidence}% · {a.pattern} — {a.at}
+                  <span className="font-bold text-primary">{a.label}</span> · {a.marketLabel} ·
+                  Força {a.strength}% · Recente {a.recentHitRate}% · Histórico {a.historicalHitRate}
+                  % · Base {a.baselineRate}% · {a.pattern} — {a.at}
                 </li>
               ))}
             </ul>

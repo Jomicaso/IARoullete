@@ -1,14 +1,15 @@
 # IARoullete
 
-Bot independente para acompanhar a XXXtreme Lightning Roulette e comparar estrategias
-de cobertura de colunas com base no historico recente.
+Bot independente para acompanhar a XXXtreme Lightning Roulette e comparar estratégias
+de diferentes mercados com base no histórico ao vivo.
 
 ## Como funciona
 
 - Le ate 40 resultados, do mais recente para o mais antigo.
-- Compara as tres combinacoes possiveis de duas colunas.
-- Combina frequencia historica, os 12 resultados mais recentes e transicoes semelhantes.
-- Seleciona a cobertura com melhor desempenho observado.
+- Compara colunas, dúzias, vermelho/preto, par/ímpar e baixo/alto.
+- Combina frequência histórica, os 12 resultados mais recentes e transições semelhantes.
+- Normaliza cada método pela respetiva probabilidade-base antes de os comparar.
+- Seleciona a entrada com melhor evidência observada.
 - Acompanha cada entrada, ate 3 gales, WIN e LOSS em tempo real.
 - Envia a estrategia e os resultados para o Telegram.
 
