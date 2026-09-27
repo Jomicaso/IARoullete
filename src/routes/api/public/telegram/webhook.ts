@@ -17,6 +17,15 @@ function safeEqual(a: string, b: string) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
+function publicOrigin(request: Request) {
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const host = forwardedHost || request.headers.get("host")?.trim();
+  if (host && /^[a-z0-9.-]+(?::\d+)?$/i.test(host)) {
+    return `https://${host}`;
+  }
+  return new URL(request.url).origin;
+}
+
 export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
     handlers: {
@@ -103,7 +112,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           );
         }
 
-        const webhookUrl = `${new URL(request.url).origin}/api/public/telegram/webhook`;
+        const webhookUrl = `${publicOrigin(request)}/api/public/telegram/webhook`;
         try {
           await telegramCall("setWebhook", {
             url: webhookUrl,
