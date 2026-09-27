@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  affiliateLinks,
   columnOf,
   currentStreak,
   fetchSpins,
@@ -12,12 +13,6 @@ import {
 import { analyzeStrategy } from "@/lib/strategy";
 
 const STATE_KEY = "ia_roulette_state";
-const MISTBET_LINK = "https://msbt.io/5K9kF";
-const LEON_LINK = "https://9behi4y9oh.com/?serial=57437&amp;creative_id=453&amp;anid=";
-
-function affiliateLinks() {
-  return `\n💰 <a href="${MISTBET_LINK}">Mostbet</a>  |  💰 <a href="${LEON_LINK}">Leon</a>`;
-}
 
 const ORD: Record<number, string> = { 1: "1ª", 2: "2ª", 3: "3ª" };
 

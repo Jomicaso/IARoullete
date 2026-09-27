@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHash, timingSafeEqual } from "crypto";
-import { telegramCall } from "@/lib/roulette";
+import { affiliateLinks, telegramCall } from "@/lib/roulette";
 
 function expectedSecret() {
   const explicitSecret = process.env["TELEGRAM_WEBHOOK_SECRET"];
@@ -179,7 +179,9 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                 chat_id: chatId,
                 text:
                   "IARoullete ligada. O bot compara padrões do histórico e escolhe uma estratégia para as duas colunas com até 3 gales.\n\n" +
-                  "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida.",
+                  "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida." +
+                  affiliateLinks(),
+                parse_mode: "HTML",
               });
             } catch (err) {
               console.error("welcome failed", err);
@@ -194,7 +196,8 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             .upsert({ chat_id: chatId, title, active: false });
           await telegramCall("sendMessage", {
             chat_id: chatId,
-            text: "Avisos desligados. Envie /start para voltar a receber.",
+            text: "Avisos desligados. Envie /start para voltar a receber." + affiliateLinks(),
+            parse_mode: "HTML",
           });
           return Response.json({ ok: true });
         }
@@ -211,7 +214,9 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           text:
             "IARoullete ligada! O bot compara padrões do histórico e escolhe uma estratégia para as duas colunas com até 3 gales.\n\n" +
             "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida.\n\n" +
-            "Envie /stop para desligar.",
+            "Envie /stop para desligar." +
+            affiliateLinks(),
+          parse_mode: "HTML",
         });
         return Response.json({ ok: true });
       },

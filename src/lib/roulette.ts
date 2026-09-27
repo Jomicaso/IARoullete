@@ -10,6 +10,12 @@ export const SPINS_API =
 
 export const ENTRY_STREAK = 2;
 export const MAX_GALES = 3;
+const MISTBET_LINK = "https://msbt.io/5K9kF";
+const LEON_LINK = "https://9behi4y9oh.com/?serial=57437&amp;creative_id=453&amp;anid=";
+
+export function affiliateLinks() {
+  return `\n💰 <a href="${MISTBET_LINK}">Mostbet</a>  |  💰 <a href="${LEON_LINK}">Leon</a>`;
+}
 
 export type EntryFilterReason = "not_ready" | "after_zero" | "after_loss" | null;
 
