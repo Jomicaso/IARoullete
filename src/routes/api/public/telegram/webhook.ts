@@ -45,6 +45,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           | "permission_denied"
           | "schema_missing"
           | "request_failed" = "none";
+        let monitorUpdatedAt: string | null = null;
         if (configuration.supabaseUrl && configuration.supabaseServiceRole) {
           try {
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -54,6 +55,12 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               .limit(1);
             if (!error) {
               database = "ready";
+              const { data: monitorState } = await supabaseAdmin
+                .from("alert_state")
+                .select("updated_at")
+                .eq("id", "ia_roulette_state")
+                .maybeSingle();
+              monitorUpdatedAt = monitorState?.updated_at ?? null;
             } else {
               const signature =
                 `${error.code ?? ""} ${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
@@ -100,6 +107,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           configuration,
           database,
           databaseReason,
+          monitorUpdatedAt,
           telegram,
         });
       },
