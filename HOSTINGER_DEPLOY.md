@@ -45,7 +45,10 @@ proprio dominio sem expor credenciais no URL.
 
 ## Cron
 
-No SQL Editor do segundo Supabase:
+No SQL Editor do segundo Supabase, executa diretamente o ficheiro
+`SUPABASE_CRON.sql`. O ficheiro já contém o domínio público correto da aplicação.
+
+Equivale a:
 
 ```sql
 DO $$
@@ -61,7 +64,7 @@ SELECT cron.schedule(
   '* * * * *',
   $cron$
   SELECT net.http_get(
-    url := 'https://TEU-DOMINIO/api/public/roulette/check?run=' ||
+    url := 'https://lightgrey-koala-276513.hostingersite.com/api/public/roulette/check?run=' ||
       extract(epoch from clock_timestamp())::bigint::text,
     headers := '{"Cache-Control":"no-cache"}'::jsonb,
     timeout_milliseconds := 55000
