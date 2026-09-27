@@ -265,7 +265,12 @@ async function processSpin(
       state.last3AlertedSpinId = spin.id;
       console.info(`roulette signal WIN number=${spin.number}`);
       if (deliver)
-        await broadcast(`${spin.id}:win`, `🟢 <b>GREEN (${spin.number})</b>` + affiliateLinks());
+        await broadcast(
+          `${spin.id}:win`,
+          `🟢 <b>GREEN (${spin.number})</b>\n` +
+            `📊 Hoje: 🟢 ${state.wins} | 🔴 ${state.losses}` +
+            affiliateLinks(),
+        );
       await saveState(state);
       return "win";
     }
@@ -300,7 +305,12 @@ async function processSpin(
     state.last3AlertedSpinId = spin.id;
     console.info(`roulette signal LOSS number=${spin.number}`);
     if (deliver)
-      await broadcast(`${spin.id}:loss`, `🔴 <b>RED (${spin.number})</b>` + affiliateLinks());
+      await broadcast(
+        `${spin.id}:loss`,
+        `🔴 <b>RED (${spin.number})</b>\n` +
+          `📊 Hoje: 🟢 ${state.wins} | 🔴 ${state.losses}` +
+          affiliateLinks(),
+      );
     await saveState(state);
     return "loss";
   }
