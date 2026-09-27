@@ -45,7 +45,16 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           | "permission_denied"
           | "schema_missing"
           | "request_failed" = "none";
-        let monitorUpdatedAt: string | null = null;
+        let monitor: {
+          updatedAt: string | null;
+          day: string | null;
+          greens: number;
+          reds: number;
+          betActive: boolean;
+          gale: number;
+          cooldownSpins: number;
+          dailyRiskLimitReached: boolean;
+        } | null = null;
         if (configuration.supabaseUrl && configuration.supabaseServiceRole) {
           try {
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -57,10 +66,30 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               database = "ready";
               const { data: monitorState } = await supabaseAdmin
                 .from("alert_state")
-                .select("updated_at")
+                .select("updated_at,value")
                 .eq("id", "ia_roulette_state")
                 .maybeSingle();
-              monitorUpdatedAt = monitorState?.updated_at ?? null;
+              if (monitorState) {
+                const value = JSON.parse(monitorState.value) as {
+                  day?: string;
+                  wins?: number;
+                  losses?: number;
+                  betActive?: boolean;
+                  gale?: number;
+                  cooldownSpins?: number;
+                };
+                const reds = value.losses ?? 0;
+                monitor = {
+                  updatedAt: monitorState.updated_at,
+                  day: value.day ?? null,
+                  greens: value.wins ?? 0,
+                  reds,
+                  betActive: value.betActive ?? false,
+                  gale: value.gale ?? 0,
+                  cooldownSpins: value.cooldownSpins ?? 0,
+                  dailyRiskLimitReached: reds >= 2,
+                };
+              }
             } else {
               const signature =
                 `${error.code ?? ""} ${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
@@ -107,7 +136,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           configuration,
           database,
           databaseReason,
-          monitorUpdatedAt,
+          monitor,
           telegram,
         });
       },
