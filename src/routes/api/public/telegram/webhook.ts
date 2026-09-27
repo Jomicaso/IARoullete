@@ -104,19 +104,25 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         }
 
         const webhookUrl = `${new URL(request.url).origin}/api/public/telegram/webhook`;
-        await telegramCall("setWebhook", {
-          url: webhookUrl,
-          secret_token: secret,
-          allowed_updates: ["message", "channel_post", "my_chat_member"],
-          drop_pending_updates: false,
-        });
-        const info = await telegramCall("getWebhookInfo", {});
+        try {
+          await telegramCall("setWebhook", {
+            url: webhookUrl,
+            secret_token: secret,
+            allowed_updates: ["message", "channel_post", "my_chat_member"],
+            drop_pending_updates: false,
+          });
+          const info = await telegramCall("getWebhookInfo", {});
 
-        return Response.json({
-          ok: true,
-          webhookUrl,
-          telegram: info.result,
-        });
+          return Response.json({
+            ok: true,
+            webhookUrl,
+            telegram: info.result,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown Telegram error";
+          console.error("Telegram webhook setup failed", error);
+          return Response.json({ ok: false, error: message }, { status: 502 });
+        }
       },
       POST: async ({ request }) => {
         const secret = expectedSecret();
