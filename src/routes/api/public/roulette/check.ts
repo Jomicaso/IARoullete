@@ -20,7 +20,6 @@ import {
 } from "@/lib/strategy";
 
 const STATE_KEY = "ia_roulette_state";
-const MAX_DAILY_REDS = 2;
 
 type PerformanceRecord = {
   market: StrategyMarket;
@@ -320,11 +319,6 @@ async function processSpin(
     state.last3AlertedSpinId = spin.id;
     state.last2AlertedSpinId = spin.id;
     state.lastProcessedSpinId = spin.id;
-
-    if (state.losses >= MAX_DAILY_REDS) {
-      await saveState(state);
-      return "daily_risk_limit";
-    }
 
     if (state.cooldownSpins > 0) {
       state.cooldownSpins -= 1;

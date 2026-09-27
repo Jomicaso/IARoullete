@@ -13,7 +13,7 @@ de diferentes mercados com base no histórico ao vivo.
 - Executa backtest walk-forward sem usar resultados futuros.
 - Aprende com os resultados reais dos últimos 500 sinais.
 - Só emite sinais com força mínima de 65%.
-- Pausa uma jogada após RED e bloqueia novas entradas depois de dois REDs no mesmo dia.
+- Pausa uma jogada após cada RED antes de voltar a procurar entrada.
 - Acompanha cada entrada, ate 3 gales, WIN e LOSS em tempo real.
 - Envia a estrategia e os resultados para o Telegram.
 

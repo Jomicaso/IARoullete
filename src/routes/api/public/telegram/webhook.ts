@@ -53,7 +53,6 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           betActive: boolean;
           gale: number;
           cooldownSpins: number;
-          dailyRiskLimitReached: boolean;
         } | null = null;
         if (configuration.supabaseUrl && configuration.supabaseServiceRole) {
           try {
@@ -87,7 +86,6 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                   betActive: value.betActive ?? false,
                   gale: value.gale ?? 0,
                   cooldownSpins: value.cooldownSpins ?? 0,
-                  dailyRiskLimitReached: reds >= 2,
                 };
               }
             } else {
