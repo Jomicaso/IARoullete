@@ -179,7 +179,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                 chat_id: chatId,
                 text:
                   "IARoullete ligada. O bot compara padrões do histórico e escolhe uma estratégia para as duas colunas com até 3 gales.\n\n" +
-                  "Os resultados são uma simulação estatística e não garantem o próximo resultado.",
+                  "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida.",
               });
             } catch (err) {
               console.error("welcome failed", err);
@@ -210,7 +210,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           chat_id: chatId,
           text:
             "IARoullete ligada! O bot compara padrões do histórico e escolhe uma estratégia para as duas colunas com até 3 gales.\n\n" +
-            "Os resultados são uma simulação estatística e não garantem o próximo resultado.\n\n" +
+            "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida.\n\n" +
             "Envie /stop para desligar.",
         });
         return Response.json({ ok: true });

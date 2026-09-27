@@ -36,7 +36,7 @@ function transitionOutcomes(spins: Spin[], fromColumn: number) {
 
 /**
  * Compara as tres coberturas possiveis. Os resultados devem estar do mais recente
- * para o mais antigo. A recomendacao descreve apenas uma simulacao estatistica.
+ * para o mais antigo. A recomendacao usa o historico recebido em tempo real.
  */
 export function analyzeStrategy(spins: Spin[]): StrategyRecommendation | null {
   const history = spins.slice(0, HISTORY_SIZE);

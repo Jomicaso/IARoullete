@@ -9,7 +9,7 @@ de cobertura de colunas com base no historico recente.
 - Compara as tres combinacoes possiveis de duas colunas.
 - Combina frequencia historica, os 12 resultados mais recentes e transicoes semelhantes.
 - Seleciona a cobertura com melhor desempenho observado.
-- Simula entrada, ate 3 gales, WIN e LOSS.
+- Acompanha cada entrada, ate 3 gales, WIN e LOSS em tempo real.
 - Envia a estrategia e os resultados para o Telegram.
 
 O valor de confianca descreve apenas o desempenho da amostra analisada. A roleta e

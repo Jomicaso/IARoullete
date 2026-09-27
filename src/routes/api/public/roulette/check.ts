@@ -10,16 +10,6 @@ import {
   type Spin,
 } from "@/lib/roulette";
 import { analyzeStrategy } from "@/lib/strategy";
-import * as sim from "@/lib/simulation";
-
-/** Simulação paralela: nunca pode quebrar o fluxo dos alertas. */
-async function safeSim(fn: () => Promise<void>) {
-  try {
-    await fn();
-  } catch (err) {
-    console.error("simulation failed", err);
-  }
-}
 
 const STATE_KEY = "ia_roulette_state";
 const MISTBET_LINK = "https://msbt.io/5K9kF";
@@ -205,7 +195,6 @@ async function processSpin(
     const won = col !== state.betColumn; // zero also wins (cobrir o zero)
 
     if (won) {
-      await safeSim(() => sim.onWin(state.gale));
       state.wins += 1;
       state.winStreak += 1;
       state.betActive = false;
@@ -226,7 +215,6 @@ async function processSpin(
 
     if (state.gale < MAX_GALES) {
       state.gale += 1;
-      await safeSim(() => sim.onGale(state.gale));
       const label =
         state.gale === MAX_GALES
           ? `PREPARE O ${MAX_GALES} GALE — ÚLTIMO`
@@ -245,7 +233,6 @@ async function processSpin(
       return `gale_${state.gale}`;
     }
 
-    await safeSim(() => sim.onLoss());
     state.losses += 1;
     state.winStreak = 0;
     state.betActive = false;
@@ -258,7 +245,7 @@ async function processSpin(
       await broadcast(
         `${spin.id}:loss`,
         `🔴🔴🔴 <b>LOSS (${spin.number})</b> 🔴🔴🔴\n` +
-          `A IA vai recalcular a estrategia antes da proxima simulacao.` +
+          `A IA vai recalcular a estratégia antes do próximo sinal.` +
           affiliateLinks(),
       );
     if (deliver) await broadcast(`${spin.id}:scoreboard`, scoreboard(state));
@@ -267,7 +254,7 @@ async function processSpin(
     return "loss";
   }
 
-  // ---- Sem aposta ativa: comparar padroes e preparar a proxima simulacao ----
+  // ---- Sem sinal ativo: comparar padroes e preparar a proxima estrategia ----
   if (spin.id !== state.last3AlertedSpinId) {
     const strategy = analyzeStrategy(spins.slice(index));
     state.last3AlertedSpinId = spin.id;
@@ -279,20 +266,19 @@ async function processSpin(
       return "collecting_history";
     }
 
-    await safeSim(() => sim.onEntry());
     console.info(
       `ia strategy excluded_column=${strategy.excludedColumn} confidence=${strategy.confidence}`,
     );
     if (deliver)
       await broadcast(
         `${spin.id}:strategy`,
-        `🧠 <b>ESTRATEGIA IA — SIMULACAO</b>\n` +
+        `🧠 <b>ESTRATÉGIA IA — AO VIVO</b>\n` +
           `🎡 <b>ENTRAR ${strategy.betColumns[0]}ª E ${strategy.betColumns[1]}ª COLUNA</b>\n` +
           `🎯 <b>COBRIR O ZERO (🟢)</b>\n` +
           `🚫 Evitar: ${strategy.excludedColumn}ª coluna\n` +
           `📊 Modelo: ${strategy.pattern}\n` +
           `📈 Cobertura recente: ${strategy.recentHitRate}% | histórica: ${strategy.historicalHitRate}%\n` +
-          `🧪 Confiança estatística: ${strategy.confidence}% (não é previsão)\n` +
+          `📊 Confiança estatística: ${strategy.confidence}%\n` +
           `🕒 ${hora}` +
           affiliateLinks(),
       );
@@ -333,9 +319,6 @@ async function runOnce(): Promise<{ status: string; count: number }> {
     state.winStreak = 0;
     state.skipNextEntryAfterLoss = false;
   }
-
-  // Simulação paralela: fecha sessões terminadas sem enviar mensagens ao Telegram.
-  await safeSim(() => sim.closeFinishedSessions().then(() => undefined));
 
   if (!state.lastProcessedSpinId) {
     state.lastProcessedSpinId = head.id;

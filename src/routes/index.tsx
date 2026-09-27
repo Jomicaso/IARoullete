@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getSpins, type Spin } from "@/lib/spins.functions";
-import { getSimulation, type SimSession } from "@/lib/simulation.functions";
 import { analyzeStrategy } from "@/lib/strategy";
 
 export const Route = createFileRoute("/")({
@@ -12,7 +11,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Simulador que compara padrões históricos da XXXtreme Lightning Roulette e seleciona uma estratégia.",
+          "Monitor que compara padrões históricos da XXXtreme Lightning Roulette e envia estratégias ao vivo.",
       },
       { property: "og:title", content: "IARoullete | Análise de Estratégias" },
       {
@@ -66,79 +65,6 @@ type AlertItem = {
   at: string;
   label: string;
 };
-
-const SESSION_LABEL: Record<string, string> = {
-  s1: "00:00 → 08:00",
-  s2: "08:00 → 12:00",
-  s3: "12:00 → 20:00",
-  s4: "20:00 → 00:00",
-};
-
-function eur(v: number) {
-  return `${Number(v).toFixed(2).replace(".", ",")} €`;
-}
-
-function SimulationPanel() {
-  const fetchSim = useServerFn(getSimulation);
-  const [sessions, setSessions] = useState<SimSession[]>([]);
-
-  useEffect(() => {
-    let alive = true;
-    const tick = async () => {
-      try {
-        const data = await fetchSim();
-        if (alive) setSessions(data.sessions);
-      } catch {
-        /* ignorar */
-      }
-    };
-    tick();
-    const id = setInterval(tick, 15000);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
-  }, [fetchSim]);
-
-  const total = sessions.reduce((acc, s) => acc + (Number(s.end_bank) - Number(s.start_bank)), 0);
-
-  return (
-    <section className="mt-6 rounded-xl border border-border bg-card p-4">
-      <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-        Simulação de banca (50 € por sessão)
-      </h2>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Apenas simulação estatística — não é dinheiro real e não faz apostas.
-      </p>
-      <div className="mt-3 space-y-2">
-        {["s1", "s2", "s3", "s4"].map((key) => {
-          const s = sessions.find((x) => x.session === key);
-          const res = s ? Number(s.end_bank) - Number(s.start_bank) : 0;
-          return (
-            <div key={key} className="rounded-lg border border-border px-3 py-2 text-sm">
-              <p className="font-semibold">{SESSION_LABEL[key]}</p>
-              <p className="text-muted-foreground">
-                Inicial {eur(s?.start_bank ?? 50)} · Final {eur(s?.end_bank ?? 50)} · Entradas{" "}
-                {s?.entries ?? 0} · 🟢 {s?.wins ?? 0} · 🔴 {s?.losses ?? 0}
-              </p>
-              <p className={res >= 0 ? "font-bold text-primary" : "font-bold text-roulette-red"}>
-                Resultado: {res >= 0 ? "+" : "-"}
-                {eur(Math.abs(res))}
-              </p>
-              {s?.insufficient && (
-                <p className="text-xs font-semibold text-roulette-red">Banca insuficiente</p>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <p className="mt-3 text-sm font-bold">
-        Total do dia: {total >= 0 ? "+" : "-"}
-        {eur(Math.abs(total))}
-      </p>
-    </section>
-  );
-}
 
 function Index() {
   const fetchSpins = useServerFn(getSpins);
@@ -211,7 +137,7 @@ function Index() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.2em]">
-                  Estratégia IA · Simulação
+                  Estratégia IA · Ao vivo
                 </p>
                 <p className="mt-1 text-3xl font-black leading-none">{banner.label}</p>
                 <p className="mt-2 text-sm font-semibold">
@@ -242,7 +168,8 @@ function Index() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Compara frequência recente, histórico e transições entre colunas para escolher uma
-            cobertura. É uma simulação estatística, não uma previsão do próximo resultado.
+            cobertura e enviar sinais em tempo real. A análise estatística não garante o próximo
+            resultado.
           </p>
         </header>
 
@@ -275,7 +202,7 @@ function Index() {
           {active ? (
             <>
               <p className="text-sm font-semibold uppercase tracking-widest">
-                Estratégia atual · Simulação
+                Estratégia atual · Ao vivo
               </p>
               <p className="mt-1 text-3xl font-black">
                 {strategy.betColumns[0]}ª e {strategy.betColumns[1]}ª colunas + zero
@@ -312,8 +239,6 @@ function Index() {
             Ativar notificações
           </button>
         </div>
-
-        <SimulationPanel />
 
         <section className="mt-6">
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
