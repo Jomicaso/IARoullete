@@ -70,7 +70,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                 .eq("id", "ia_roulette_state")
                 .maybeSingle();
               if (monitorState) {
-                const value = JSON.parse(monitorState.value) as {
+                const value = JSON.parse(monitorState.value ?? "{}") as {
                   day?: string;
                   wins?: number;
                   losses?: number;
