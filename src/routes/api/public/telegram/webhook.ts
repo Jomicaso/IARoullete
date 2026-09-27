@@ -94,6 +94,30 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           telegram,
         });
       },
+      PUT: async ({ request }) => {
+        const secret = expectedSecret();
+        if (!process.env["TELEGRAM_BOT_TOKEN"] || !secret) {
+          return Response.json(
+            { ok: false, error: "Telegram environment variables are not configured" },
+            { status: 500 },
+          );
+        }
+
+        const webhookUrl = `${new URL(request.url).origin}/api/public/telegram/webhook`;
+        await telegramCall("setWebhook", {
+          url: webhookUrl,
+          secret_token: secret,
+          allowed_updates: ["message", "channel_post", "my_chat_member"],
+          drop_pending_updates: false,
+        });
+        const info = await telegramCall("getWebhookInfo", {});
+
+        return Response.json({
+          ok: true,
+          webhookUrl,
+          telegram: info.result,
+        });
+      },
       POST: async ({ request }) => {
         const secret = expectedSecret();
         if (!secret) return new Response("Not configured", { status: 500 });

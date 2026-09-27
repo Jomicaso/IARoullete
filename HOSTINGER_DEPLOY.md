@@ -34,11 +34,14 @@ Usa o token do novo bot. Nao reutilizes o token do RouletteGaleXxx.
 
 ## Webhook
 
-Depois do deploy, configura:
+Depois do deploy e das variaveis de ambiente estarem aplicadas, faz um pedido PUT:
 
 ```text
-https://api.telegram.org/botTELEGRAM_BOT_TOKEN/setWebhook?url=https%3A%2F%2FTEU-DOMINIO%2Fapi%2Fpublic%2Ftelegram%2Fwebhook&secret_token=TELEGRAM_WEBHOOK_SECRET
+PUT https://TEU-DOMINIO/api/public/telegram/webhook
 ```
+
+O servidor usa o token e o segredo guardados na Hostinger e aponta o bot para o
+proprio dominio sem expor credenciais no URL.
 
 ## Cron
 
