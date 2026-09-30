@@ -305,7 +305,6 @@ async function processSpin(
       await broadcast(
         `${spin.id}:pattern:2`,
         `🔎 <b>A DETECTAR PADRÃO</b>\n` +
-          `📍 Coluna ${streak.column}: 2/${ENTRY_STREAK}\n` +
           `⏳ <b>ESPERE A JOGADA!</b>\n` +
           `🕒 ${hora}` +
           affiliateLinks(),
@@ -320,7 +319,6 @@ async function processSpin(
       await broadcast(
         `${spin.id}:pattern:3`,
         `🔎 <b>A DETECTAR PADRÃO</b>\n` +
-          `📍 Coluna ${streak.column}: 3/${ENTRY_STREAK}\n` +
           `⏳ <b>ESPERE A JOGADA!</b>\n` +
           `🕒 ${hora}` +
           affiliateLinks(),
