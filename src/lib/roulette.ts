@@ -10,7 +10,7 @@ const SPINS_API =
 const HISTORY_CACHE_MS = 10 * 60 * 1_000;
 let historyCache: { expiresAt: number; spins: Spin[] } | null = null;
 
-export const ENTRY_STREAK = 2;
+export const ENTRY_STREAK = 4;
 export const MAX_GALES = 3;
 const MISTBET_LINK = "https://msbt.io/5K9kF";
 const LEON_LINK = "https://9behi4y9oh.com/?serial=57437&amp;creative_id=453&amp;anid=";

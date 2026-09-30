@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   affiliateLinks,
   currentStreak,
+  ENTRY_STREAK,
   fetchSpins,
   MAX_GALES,
   RouletteRateLimitError,
@@ -10,16 +11,14 @@ import {
   type Spin,
 } from "@/lib/roulette";
 import {
-  analyzeStrategy,
-  backtestStrategies,
   strategyEntryLabel,
   strategySequenceReturn,
   strategyWins,
-  type StrategyLearning,
   type StrategyMarket,
 } from "@/lib/strategy";
 
 const STATE_KEY = "ia_roulette_state";
+const STRATEGY_VERSION = "columns-4-v1";
 
 type PerformanceRecord = {
   market: StrategyMarket;
@@ -31,6 +30,7 @@ type PerformanceRecord = {
 };
 
 type State = {
+  strategyVersion: string;
   last2AlertedSpinId: string | null;
   last3AlertedSpinId: string | null;
   lastProcessedSpinId: string | null;
@@ -52,6 +52,7 @@ type State = {
 };
 
 const defaultState: State = {
+  strategyVersion: STRATEGY_VERSION,
   last2AlertedSpinId: null,
   last3AlertedSpinId: null,
   lastProcessedSpinId: null,
@@ -92,6 +93,15 @@ async function loadState(): Promise<State> {
   try {
     const saved = JSON.parse(data.value) as Partial<State> & { betColumn?: number };
     const state = { ...defaultState, ...saved } as State;
+    if (saved.strategyVersion !== STRATEGY_VERSION) {
+      state.strategyVersion = STRATEGY_VERSION;
+      state.betActive = false;
+      state.gale = 0;
+      state.skipNextEntryAfterLoss = false;
+      state.cooldownSpins = 0;
+      state.last2AlertedSpinId = null;
+      state.last3AlertedSpinId = null;
+    }
     if (!saved.betMarket && saved.betColumn && saved.betColumn >= 1 && saved.betColumn <= 3) {
       state.betMarket = "columns";
       state.betSelection = `exclude:${saved.betColumn}`;
@@ -109,47 +119,6 @@ async function saveState(state: State) {
     .from("alert_state")
     .upsert({ id: STATE_KEY, value: JSON.stringify(state), updated_at: new Date().toISOString() });
   if (error) throw new Error(`Failed to save roulette state: ${error.message}`);
-}
-
-function actualLearning(records: PerformanceRecord[]): StrategyLearning {
-  const totals: Record<string, { samples: number; totalReturn: number; wins: number }> = {};
-  for (const record of records) {
-    const key = `${record.market}:${record.selection}`;
-    const row = (totals[key] ??= { samples: 0, totalReturn: 0, wins: 0 });
-    row.samples += 1;
-    row.totalReturn += record.returnRate;
-    row.wins += record.green ? 1 : 0;
-  }
-  return Object.fromEntries(
-    Object.entries(totals).map(([key, row]) => [
-      key,
-      {
-        samples: row.samples,
-        averageReturn: row.totalReturn / row.samples,
-        winRate: row.wins / row.samples,
-      },
-    ]),
-  );
-}
-
-function mergeLearning(backtest: StrategyLearning, actual: StrategyLearning): StrategyLearning {
-  const merged: StrategyLearning = { ...backtest };
-  for (const [key, live] of Object.entries(actual)) {
-    const historical = merged[key];
-    if (!historical) {
-      merged[key] = live;
-      continue;
-    }
-    const liveWeight = live.samples * 3;
-    const samples = historical.samples + liveWeight;
-    merged[key] = {
-      samples,
-      averageReturn:
-        (historical.averageReturn * historical.samples + live.averageReturn * liveWeight) / samples,
-      winRate: (historical.winRate * historical.samples + live.winRate * liveWeight) / samples,
-    };
-  }
-  return merged;
 }
 
 function recordPerformance(state: State, spin: Spin, green: boolean) {
@@ -314,56 +283,73 @@ async function processSpin(
     return "loss";
   }
 
-  // ---- Sem sinal ativo: comparar padroes e preparar a proxima estrategia ----
-  if (spin.id !== state.last3AlertedSpinId) {
-    state.last3AlertedSpinId = spin.id;
+  // ---- Sem sinal ativo: aguardar quatro resultados seguidos na mesma coluna ----
+  state.lastProcessedSpinId = spin.id;
+  state.skipNextEntryAfterLoss = false;
+  state.cooldownSpins = 0;
+
+  const streak = currentStreak(spins.slice(index));
+  if (streak.column === 0) {
+    await saveState(state);
+    return "waiting_column_streak";
+  }
+
+  if (streak.count === 2 && spin.id !== state.last2AlertedSpinId) {
     state.last2AlertedSpinId = spin.id;
-    state.lastProcessedSpinId = spin.id;
+    if (deliver)
+      await broadcast(
+        `${spin.id}:pattern:2`,
+        `🔎 <b>A DETECTAR PADRÃO</b>\n` +
+          `📍 Coluna ${streak.column}: 2/${ENTRY_STREAK}\n` +
+          `⏳ <b>ESPERE A JOGADA!</b>\n` +
+          `🕒 ${hora}` +
+          affiliateLinks(),
+      );
+    await saveState(state);
+    return "pattern_2";
+  }
 
-    if (state.cooldownSpins > 0) {
-      state.cooldownSpins -= 1;
-      state.skipNextEntryAfterLoss = state.cooldownSpins > 0;
-      await saveState(state);
-      return "cooldown_after_red";
-    }
+  if (streak.count === 3 && spin.id !== state.last3AlertedSpinId) {
+    state.last3AlertedSpinId = spin.id;
+    if (deliver)
+      await broadcast(
+        `${spin.id}:pattern:3`,
+        `🔎 <b>A DETECTAR PADRÃO</b>\n` +
+          `📍 Coluna ${streak.column}: 3/${ENTRY_STREAK}\n` +
+          `⏳ <b>ESPERE A JOGADA!</b>\n` +
+          `🕒 ${hora}` +
+          affiliateLinks(),
+      );
+    await saveState(state);
+    return "pattern_3";
+  }
 
-    const availableHistory = spins.slice(index);
-    const learning = mergeLearning(
-      backtestStrategies(availableHistory),
-      actualLearning(state.performanceRecords),
-    );
-    const strategy = analyzeStrategy(availableHistory, learning);
-
-    if (!strategy) {
-      await saveState(state);
-      return "collecting_history";
-    }
-
-    console.info(
-      `ia strategy market=${strategy.market} selection=${strategy.selection} strength=${strategy.strength}`,
-    );
+  if (streak.count === ENTRY_STREAK) {
+    const selection = `exclude:${streak.column}`;
+    const entryLabel = strategyEntryLabel("columns", selection);
+    console.info(`column streak ready column=${streak.column} count=${streak.count}`);
     if (deliver)
       await broadcast(
         `${spin.id}:strategy`,
-        `🧠 <b>SINAL IA — ${strategy.marketLabel.toUpperCase()}</b>\n` +
-          `🎯 <b>ENTRAR: ${strategy.entryLabel.toUpperCase()}</b>\n` +
-          `📊 <b>CONFIANÇA: ${strategy.strength}%</b>\n` +
+        `🚨 <b>SINAL — COLUNAS</b>\n` +
+          `📍 4 saídas seguidas na coluna ${streak.column}\n` +
+          `🎯 <b>ENTRAR: ${entryLabel.toUpperCase()}</b>\n` +
+          `🔁 Até ${MAX_GALES} gales\n` +
           `🕒 ${hora}` +
           affiliateLinks(),
       );
     state.betActive = true;
-    state.betMarket = strategy.market;
-    state.betSelection = strategy.selection;
-    state.betEntryLabel = strategy.entryLabel;
-    state.betStrength = strategy.strength;
+    state.betMarket = "columns";
+    state.betSelection = selection;
+    state.betEntryLabel = entryLabel;
+    state.betStrength = 0;
     state.gale = 0;
     await saveState(state);
     return "strategy_ready";
   }
 
-  state.lastProcessedSpinId = spin.id;
   await saveState(state);
-  return "idle";
+  return "waiting_column_streak";
 }
 
 async function runOnce(): Promise<{ status: string; count: number }> {

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getSpins, type Spin } from "@/lib/spins.functions";
-import { analyzeStrategy } from "@/lib/strategy";
+import { currentStreak, ENTRY_STREAK } from "@/lib/roulette";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -11,12 +11,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Monitor que compara padrões históricos da XXXtreme Lightning Roulette e envia estratégias ao vivo.",
+          "Monitor que deteta quatro resultados seguidos na mesma coluna da XXXtreme Lightning Roulette.",
       },
       { property: "og:title", content: "IARoullete | Análise de Estratégias" },
       {
         property: "og:description",
-        content: "Análise estatística de estratégias de colunas em tempo real.",
+        content: "Deteção de sequências de quatro resultados na mesma coluna em tempo real.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -56,14 +56,8 @@ function beep() {
 
 type AlertItem = {
   id: string;
-  marketLabel: string;
+  column: number;
   entryLabel: string;
-  strength: number;
-  baselineRate: number;
-  historicalHitRate: number;
-  recentHitRate: number;
-  sampleSize: number;
-  pattern: string;
   numbers: number[];
   at: string;
   label: string;
@@ -91,20 +85,16 @@ function Index() {
         setUpdatedAt(new Date().toLocaleTimeString("pt-PT"));
 
         const head = data[0];
-        const strategy = analyzeStrategy(data);
-        if (head && strategy && lastAlertId.current !== head.id) {
+        const streak = currentStreak(data);
+        if (head && streak.count === ENTRY_STREAK && lastAlertId.current !== head.id) {
           lastAlertId.current = head.id;
-          const label = `Estratégia: ${strategy.entryLabel}`;
+          const selected = [1, 2, 3].filter((column) => column !== streak.column);
+          const entryLabel = `${selected[0]}ª e ${selected[1]}ª colunas + zero`;
+          const label = `Entrada: ${entryLabel}`;
           const item: AlertItem = {
             id: head.id,
-            marketLabel: strategy.marketLabel,
-            entryLabel: strategy.entryLabel,
-            strength: strategy.strength,
-            baselineRate: strategy.baselineRate,
-            historicalHitRate: strategy.historicalHitRate,
-            recentHitRate: strategy.recentHitRate,
-            sampleSize: strategy.sampleSize,
-            pattern: strategy.pattern,
+            column: streak.column,
+            entryLabel,
             numbers: data.slice(0, 8).map((s) => s.number),
             at: new Date().toLocaleTimeString("pt-PT"),
             label,
@@ -114,7 +104,7 @@ function Index() {
           if (soundOn) beep();
           if ("Notification" in window && Notification.permission === "granted") {
             new Notification(label, {
-              body: `${strategy.marketLabel} · Força do padrão ${strategy.strength}%`,
+              body: `Quatro resultados seguidos na coluna ${streak.column}`,
             });
           }
         }
@@ -130,8 +120,11 @@ function Index() {
     };
   }, [fetchSpins, soundOn]);
 
-  const strategy = analyzeStrategy(spins);
-  const active = strategy !== null;
+  const streak = currentStreak(spins);
+  const active = streak.count === ENTRY_STREAK;
+  const detecting = streak.count >= 2 && streak.count < ENTRY_STREAK;
+  const selectedColumns = [1, 2, 3].filter((column) => column !== streak.column);
+  const entryLabel = `${selectedColumns[0]}ª e ${selectedColumns[1]}ª colunas + zero`;
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 text-foreground">
@@ -143,15 +136,15 @@ function Index() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.2em]">
-                  Estratégia IA · Ao vivo
+                  Sinal de colunas · Ao vivo
                 </p>
                 <p className="mt-1 text-3xl font-black leading-none">{banner.label}</p>
                 <p className="mt-2 text-sm font-semibold">
-                  {banner.marketLabel} · Força do padrão {banner.strength}% · {banner.at}
+                  Quatro resultados seguidos na coluna {banner.column} · {banner.at}
                 </p>
                 <p className="mt-1 text-sm opacity-90">{banner.numbers.join(" · ")}</p>
                 <p className="mt-1 text-xs font-bold opacity-90">
-                  Cobrir o zero · Histórico de {banner.sampleSize} resultados · Máximo de 3 gales
+                  Cobrir o zero · Máximo de 3 gales
                 </p>
               </div>
               <button
@@ -168,13 +161,11 @@ function Index() {
       <div className="mx-auto w-full max-w-2xl">
         <header className="mb-5">
           <p className="text-xs uppercase tracking-[0.2em] text-primary">Ao vivo · Evolution</p>
-          <h1 className="mt-1 text-2xl font-bold leading-tight">
-            IARoullete — Análise de Estratégias
-          </h1>
+          <h1 className="mt-1 text-2xl font-bold leading-tight">IARoullete — Padrão de Colunas</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Compara frequência, tendências e transições em colunas, dúzias, cores, paridade e
-            baixo/alto para escolher a entrada com melhor evidência observada. A análise estatística
-            não garante o próximo resultado.
+            Aguarda quatro resultados seguidos na mesma coluna e indica a entrada nas outras duas
+            colunas, com cobertura do zero e até três gales. O padrão não garante o próximo
+            resultado.
           </p>
         </header>
 
@@ -207,19 +198,25 @@ function Index() {
           {active ? (
             <>
               <p className="text-sm font-semibold uppercase tracking-widest">
-                Estratégia atual · Ao vivo
+                Sinal atual · Ao vivo
               </p>
-              <p className="mt-1 text-3xl font-black">{strategy.entryLabel}</p>
+              <p className="mt-1 text-3xl font-black">{entryLabel}</p>
               <p className="mt-2 text-xs font-bold opacity-90">
-                {strategy.marketLabel} · Força do padrão {strategy.strength}% · Recente{" "}
-                {strategy.recentHitRate}% · Histórico {strategy.historicalHitRate}% · Máximo de 3
-                gales
+                Quatro resultados seguidos na coluna {streak.column} · Máximo de 3 gales
               </p>
+            </>
+          ) : detecting ? (
+            <>
+              <p className="text-sm font-semibold uppercase tracking-widest">A detetar padrão</p>
+              <p className="mt-1 text-3xl font-black">
+                Coluna {streak.column}: {streak.count}/{ENTRY_STREAK}
+              </p>
+              <p className="mt-2 text-xs font-bold opacity-90">Espere a jogada</p>
             </>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground">A recolher histórico</p>
-              <p className="mt-1 text-3xl font-black">São necessários pelo menos 40 resultados</p>
+              <p className="text-sm text-muted-foreground">A acompanhar os resultados</p>
+              <p className="mt-1 text-3xl font-black">À espera do padrão de quatro colunas</p>
             </>
           )}
           <p className="mt-2 text-xs opacity-80">
@@ -287,13 +284,10 @@ function Index() {
               {alerts.map((a) => (
                 <li
                   key={a.id}
-                  className={`rounded-lg border px-3 py-2 text-sm ${
-                    a.strength >= 70 ? "border-primary bg-card" : "border-yellow-500/50 bg-card"
-                  }`}
+                  className="rounded-lg border border-primary bg-card px-3 py-2 text-sm"
                 >
-                  <span className="font-bold text-primary">{a.label}</span> · {a.marketLabel} ·
-                  Força {a.strength}% · Recente {a.recentHitRate}% · Histórico {a.historicalHitRate}
-                  % · Base {a.baselineRate}% · {a.pattern} — {a.at}
+                  <span className="font-bold text-primary">{a.label}</span> · Quatro resultados na
+                  coluna {a.column} — {a.at}
                 </li>
               ))}
             </ul>
