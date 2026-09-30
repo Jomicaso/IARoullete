@@ -336,8 +336,7 @@ async function processSpin(
     if (deliver)
       await broadcast(
         `${spin.id}:strategy`,
-        `🚨 <b>SINAL — COLUNAS</b>\n` +
-          `📍 4 saídas seguidas na coluna ${streak.column}\n` +
+        `🚨 <b>SINAL</b>\n` +
           `🎯 <b>ENTRAR: ${entryLabel.toUpperCase()}</b>\n` +
           `🔁 Até ${MAX_GALES} gales\n` +
           `🕒 ${hora}` +
