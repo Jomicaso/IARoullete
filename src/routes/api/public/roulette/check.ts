@@ -18,7 +18,7 @@ import {
 } from "@/lib/strategy";
 
 const STATE_KEY = "ia_roulette_state";
-const STRATEGY_VERSION = "columns-4-v1";
+const STRATEGY_VERSION = "columns-4-v2";
 
 type PerformanceRecord = {
   market: StrategyMarket;
@@ -101,6 +101,11 @@ async function loadState(): Promise<State> {
       state.cooldownSpins = 0;
       state.last2AlertedSpinId = null;
       state.last3AlertedSpinId = null;
+      state.day = "";
+      state.wins = 0;
+      state.losses = 0;
+      state.winStreak = 0;
+      state.performanceRecords = [];
     }
     if (!saved.betMarket && saved.betColumn && saved.betColumn >= 1 && saved.betColumn <= 3) {
       state.betMarket = "columns";
