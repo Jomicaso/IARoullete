@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   affiliateLinks,
+  currentDozenStreak,
   currentStreak,
+  DOZEN_ENTRY_STREAK,
   ENTRY_STREAK,
   fetchSpins,
   MAX_GALES,
@@ -288,18 +290,62 @@ async function processSpin(
     return "loss";
   }
 
-  // ---- Sem sinal ativo: aguardar quatro resultados seguidos na mesma coluna ----
+  // ---- Sem sinal ativo: procurar sequências de colunas e dúzias ----
   state.lastProcessedSpinId = spin.id;
   state.skipNextEntryAfterLoss = false;
   state.cooldownSpins = 0;
 
-  const streak = currentStreak(spins.slice(index));
-  if (streak.column === 0) {
+  const availableSpins = spins.slice(index);
+  const streak = currentStreak(availableSpins);
+  const dozenStreak = currentDozenStreak(availableSpins);
+
+  if (streak.count === ENTRY_STREAK) {
+    const selection = `exclude:${streak.column}`;
+    const entryLabel = strategyEntryLabel("columns", selection);
+    console.info(`column streak ready column=${streak.column} count=${streak.count}`);
+    if (deliver)
+      await broadcast(
+        `${spin.id}:strategy`,
+        `🚨 <b>SINAL</b>\n` +
+          `🎯 <b>ENTRAR: ${entryLabel.toUpperCase()}</b>\n` +
+          `🔁 Até ${MAX_GALES} gales\n` +
+          `🕒 ${hora}` +
+          affiliateLinks(),
+      );
+    state.betActive = true;
+    state.betMarket = "columns";
+    state.betSelection = selection;
+    state.betEntryLabel = entryLabel;
+    state.betStrength = 0;
+    state.gale = 0;
     await saveState(state);
-    return "waiting_column_streak";
+    return "column_strategy_ready";
   }
 
-  if (streak.count === 2 && spin.id !== state.last2AlertedSpinId) {
+  if (dozenStreak.count === DOZEN_ENTRY_STREAK) {
+    const selection = `exclude:${dozenStreak.dozen}`;
+    const entryLabel = strategyEntryLabel("dozens", selection);
+    console.info(`dozen streak ready dozen=${dozenStreak.dozen} count=${dozenStreak.count}`);
+    if (deliver)
+      await broadcast(
+        `${spin.id}:strategy`,
+        `🚨 <b>SINAL</b>\n` +
+          `🎯 <b>ENTRAR: ${entryLabel.toUpperCase()}</b>\n` +
+          `🔁 Até ${MAX_GALES} gales\n` +
+          `🕒 ${hora}` +
+          affiliateLinks(),
+      );
+    state.betActive = true;
+    state.betMarket = "dozens";
+    state.betSelection = selection;
+    state.betEntryLabel = entryLabel;
+    state.betStrength = 0;
+    state.gale = 0;
+    await saveState(state);
+    return "dozen_strategy_ready";
+  }
+
+  if ((streak.count === 2 || dozenStreak.count === 2) && spin.id !== state.last2AlertedSpinId) {
     state.last2AlertedSpinId = spin.id;
     if (deliver)
       await broadcast(
@@ -327,31 +373,8 @@ async function processSpin(
     return "pattern_3";
   }
 
-  if (streak.count === ENTRY_STREAK) {
-    const selection = `exclude:${streak.column}`;
-    const entryLabel = strategyEntryLabel("columns", selection);
-    console.info(`column streak ready column=${streak.column} count=${streak.count}`);
-    if (deliver)
-      await broadcast(
-        `${spin.id}:strategy`,
-        `🚨 <b>SINAL</b>\n` +
-          `🎯 <b>ENTRAR: ${entryLabel.toUpperCase()}</b>\n` +
-          `🔁 Até ${MAX_GALES} gales\n` +
-          `🕒 ${hora}` +
-          affiliateLinks(),
-      );
-    state.betActive = true;
-    state.betMarket = "columns";
-    state.betSelection = selection;
-    state.betEntryLabel = entryLabel;
-    state.betStrength = 0;
-    state.gale = 0;
-    await saveState(state);
-    return "strategy_ready";
-  }
-
   await saveState(state);
-  return "waiting_column_streak";
+  return "waiting_pattern";
 }
 
 async function runOnce(): Promise<{ status: string; count: number }> {

@@ -11,6 +11,7 @@ const HISTORY_CACHE_MS = 10 * 60 * 1_000;
 let historyCache: { expiresAt: number; spins: Spin[] } | null = null;
 
 export const ENTRY_STREAK = 4;
+export const DOZEN_ENTRY_STREAK = 3;
 export const MAX_GALES = 3;
 const MISTBET_LINK = "https://msbt.io/5K9kF";
 const LEON_LINK = "https://9behi4y9oh.com/?serial=57437&amp;creative_id=453&amp;anid=";
@@ -36,6 +37,11 @@ export function columnOf(n: number): 0 | 1 | 2 | 3 {
   if (n === 0) return 0;
   const r = n % 3;
   return r === 1 ? 1 : r === 2 ? 2 : 3;
+}
+
+export function dozenOf(n: number): 0 | 1 | 2 | 3 {
+  if (n === 0) return 0;
+  return Math.ceil(n / 12) as 1 | 2 | 3;
 }
 
 export class RouletteRateLimitError extends Error {
@@ -141,6 +147,23 @@ export function currentStreak(spins: Spin[]): {
     numbers.push(s.number);
   }
   return { column, count: numbers.length, numbers };
+}
+
+/** spins must be newest-first. Returns the current run of the same dozen. */
+export function currentDozenStreak(spins: Spin[]): {
+  dozen: 0 | 1 | 2 | 3;
+  count: number;
+  numbers: number[];
+} {
+  if (spins.length === 0) return { dozen: 0, count: 0, numbers: [] };
+  const dozen = dozenOf(spins[0]!.number);
+  if (dozen === 0) return { dozen: 0, count: 0, numbers: [] };
+  const numbers: number[] = [];
+  for (const spin of spins) {
+    if (dozenOf(spin.number) !== dozen) break;
+    numbers.push(spin.number);
+  }
+  return { dozen, count: numbers.length, numbers };
 }
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";

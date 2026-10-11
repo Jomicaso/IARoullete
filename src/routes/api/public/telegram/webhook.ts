@@ -213,7 +213,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               await telegramCall("sendMessage", {
                 chat_id: chatId,
                 text:
-                  "IARoullete ligada. O bot aguarda 4 resultados seguidos na mesma coluna e indica a entrada nas outras duas colunas, com cobertura do zero e até 3 gales.\n\n" +
+                  "IARoullete ligada. O bot procura 4 resultados seguidos na mesma coluna ou 3 na mesma dúzia e indica a entrada nas outras duas opções, com cobertura do zero e até 3 gales.\n\n" +
                   "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida." +
                   affiliateLinks(),
                 parse_mode: "HTML",
@@ -247,7 +247,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         await telegramCall("sendMessage", {
           chat_id: chatId,
           text:
-            "IARoullete ligada! O bot aguarda 4 resultados seguidos na mesma coluna e indica a entrada nas outras duas colunas, com cobertura do zero e até 3 gales.\n\n" +
+            "IARoullete ligada! O bot procura 4 resultados seguidos na mesma coluna ou 3 na mesma dúzia e indica a entrada nas outras duas opções, com cobertura do zero e até 3 gales.\n\n" +
             "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida.\n\n" +
             "Envie /stop para desligar." +
             affiliateLinks(),
