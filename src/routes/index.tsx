@@ -104,7 +104,7 @@ function Index() {
           const entryLabel = `${selected[0]}ª e ${selected[1]}ª ${unit} + zero`;
           const patternLabel = columnReady
             ? `Quatro resultados seguidos na coluna ${streak.column}`
-            : `Três resultados seguidos na ${dozenStreak.dozen}ª dúzia`;
+            : `Quatro resultados seguidos na ${dozenStreak.dozen}ª dúzia`;
           const label = `Entrada: ${entryLabel}`;
           const item: AlertItem = {
             id: head.id,
@@ -148,7 +148,7 @@ function Index() {
   const entryLabel = `${selectedGroups[0]}ª e ${selectedGroups[1]}ª ${activeMarket} + zero`;
   const activePattern = columnReady
     ? `Quatro resultados seguidos na coluna ${streak.column}`
-    : `Três resultados seguidos na ${dozenStreak.dozen}ª dúzia`;
+    : `Quatro resultados seguidos na ${dozenStreak.dozen}ª dúzia`;
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 text-foreground">
@@ -187,9 +187,9 @@ function Index() {
           <p className="text-xs uppercase tracking-[0.2em] text-primary">Ao vivo · Evolution</p>
           <h1 className="mt-1 text-2xl font-bold leading-tight">IARoullete — Padrões de Jogo</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Procura quatro resultados seguidos na mesma coluna ou três na mesma dúzia e indica a
-            entrada nas outras duas opções, com cobertura do zero e até três gales. O padrão não
-            garante o próximo resultado.
+            Procura quatro resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada
+            nas outras duas opções, com cobertura do zero e até três gales. O padrão não garante o
+            próximo resultado.
           </p>
         </header>
 

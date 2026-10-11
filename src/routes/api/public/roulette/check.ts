@@ -359,7 +359,7 @@ async function processSpin(
     return "pattern_2";
   }
 
-  if (streak.count === 3 && spin.id !== state.last3AlertedSpinId) {
+  if ((streak.count === 3 || dozenStreak.count === 3) && spin.id !== state.last3AlertedSpinId) {
     state.last3AlertedSpinId = spin.id;
     if (deliver)
       await broadcast(
