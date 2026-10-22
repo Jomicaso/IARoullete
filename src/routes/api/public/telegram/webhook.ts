@@ -26,6 +26,49 @@ function publicOrigin(request: Request) {
   return new URL(request.url).origin;
 }
 
+type PerformanceRecord = {
+  market?: string;
+  green?: boolean;
+  gale?: number;
+  day?: string;
+};
+
+function lisbonDay() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Lisbon" });
+}
+
+function strategyStats(label: string, market: string, records: PerformanceRecord[]) {
+  const rows = records.filter((record) => record.market === market);
+  const greens = rows.filter((record) => record.green === true);
+  const countAt = (gale: number) => greens.filter((record) => record.gale === gale).length;
+  const reds = rows.filter((record) => record.green === false).length;
+  const accuracy = rows.length === 0 ? "—" : `${((greens.length / rows.length) * 100).toFixed(1)}%`;
+
+  return (
+    `<b>${label}</b>\n` +
+    `Sinais: ${rows.length} | Acerto: ${accuracy}\n` +
+    `Direto: ${countAt(0)} | G1: ${countAt(1)} | G2: ${countAt(2)} | G3: ${countAt(3)} | RED: ${reds}`
+  );
+}
+
+function statsMessage(records: PerformanceRecord[]) {
+  const today = lisbonDay();
+  const todayRecords = records.filter((record) => record.day === today);
+  const greens = todayRecords.filter((record) => record.green === true).length;
+  const reds = todayRecords.filter((record) => record.green === false).length;
+  const accuracy =
+    todayRecords.length === 0 ? "—" : `${((greens / todayRecords.length) * 100).toFixed(1)}%`;
+
+  return (
+    `📊 <b>ESTATÍSTICAS DE HOJE</b>\n\n` +
+    `${strategyStats("COLUNAS", "columns", todayRecords)}\n\n` +
+    `${strategyStats("DÚZIAS", "dozens", todayRecords)}\n\n` +
+    `<b>TOTAL</b>\n` +
+    `Sinais: ${todayRecords.length} | 🟢 ${greens} | 🔴 ${reds} | Acerto: ${accuracy}\n\n` +
+    `<i>Dados detalhados recolhidos desde a ativação desta função.</i>`
+  );
+}
+
 export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
     handlers: {
@@ -214,7 +257,8 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                 chat_id: chatId,
                 text:
                   "IARoullete ligada. O bot procura 4 resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada nas outras duas opções, com cobertura do zero e até 3 gales.\n\n" +
-                  "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida." +
+                  "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida.\n\n" +
+                  "Envie /stats para consultar as estatísticas de hoje." +
                   affiliateLinks(),
                 parse_mode: "HTML",
               });
@@ -223,6 +267,39 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             }
           }
           return Response.json({ ok: true });
+        }
+
+        if (text.startsWith("/stats")) {
+          const { data, error } = await supabaseAdmin
+            .from("alert_state")
+            .select("value")
+            .eq("id", "ia_roulette_state")
+            .maybeSingle();
+          if (error) {
+            console.error("stats failed", error);
+            await telegramCall("sendMessage", {
+              chat_id: chatId,
+              text: "Não foi possível consultar as estatísticas agora. Tente novamente dentro de alguns minutos.",
+            });
+            return Response.json({ ok: true, stats: false });
+          }
+
+          let records: PerformanceRecord[] = [];
+          try {
+            const state = JSON.parse(data?.value ?? "{}") as {
+              performanceRecords?: PerformanceRecord[];
+            };
+            records = Array.isArray(state.performanceRecords) ? state.performanceRecords : [];
+          } catch {
+            records = [];
+          }
+
+          await telegramCall("sendMessage", {
+            chat_id: chatId,
+            text: statsMessage(records) + affiliateLinks(),
+            parse_mode: "HTML",
+          });
+          return Response.json({ ok: true, stats: true });
         }
 
         if (text.startsWith("/stop")) {
@@ -249,6 +326,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           text:
             "IARoullete ligada! O bot procura 4 resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada nas outras duas opções, com cobertura do zero e até 3 gales.\n\n" +
             "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida.\n\n" +
+            "Envie /stats para consultar as estatísticas de hoje.\n" +
             "Envie /stop para desligar." +
             affiliateLinks(),
           parse_mode: "HTML",

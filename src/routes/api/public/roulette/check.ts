@@ -29,6 +29,11 @@ type PerformanceRecord = {
   green: boolean;
   gale: number;
   returnRate: number;
+  day: string;
+  startedAt: string | null;
+  finishedAt: string;
+  finalNumber: number;
+  triggerNumbers: number[];
 };
 
 type State = {
@@ -41,6 +46,8 @@ type State = {
   betSelection: string;
   betEntryLabel: string;
   betStrength: number;
+  betStartedAt: string | null;
+  betTriggerNumbers: number[];
   gale: number; // 0 = entrada, 1..3 = gales
   betActive: boolean;
   skipNextEntryAfterLoss: boolean;
@@ -62,6 +69,8 @@ const defaultState: State = {
   betSelection: "exclude:1",
   betEntryLabel: "2ª e 3ª colunas + zero",
   betStrength: 0,
+  betStartedAt: null,
+  betTriggerNumbers: [],
   gale: 0,
   betActive: false,
   skipNextEntryAfterLoss: false,
@@ -129,6 +138,10 @@ async function saveState(state: State) {
 }
 
 function recordPerformance(state: State, spin: Spin, green: boolean) {
+  const finishedAt = spin.settledAt || new Date().toISOString();
+  const day = new Date(finishedAt).toLocaleDateString("en-CA", {
+    timeZone: "Europe/Lisbon",
+  });
   state.performanceRecords.push({
     market: state.betMarket,
     selection: state.betSelection,
@@ -142,6 +155,11 @@ function recordPerformance(state: State, spin: Spin, green: boolean) {
       state.gale,
       green,
     ),
+    day,
+    startedAt: state.betStartedAt,
+    finishedAt,
+    finalNumber: spin.number,
+    triggerNumbers: state.betTriggerNumbers,
   });
   state.performanceRecords = state.performanceRecords.slice(-500);
 }
@@ -236,6 +254,8 @@ async function processSpin(
       state.winStreak += 1;
       state.betActive = false;
       state.gale = 0;
+      state.betStartedAt = null;
+      state.betTriggerNumbers = [];
       state.last2AlertedSpinId = spin.id;
       state.last3AlertedSpinId = spin.id;
       console.info(`roulette signal WIN number=${spin.number}`);
@@ -274,6 +294,8 @@ async function processSpin(
     state.winStreak = 0;
     state.betActive = false;
     state.gale = 0;
+    state.betStartedAt = null;
+    state.betTriggerNumbers = [];
     state.skipNextEntryAfterLoss = true;
     state.cooldownSpins = 1;
     state.last2AlertedSpinId = spin.id;
@@ -317,6 +339,8 @@ async function processSpin(
     state.betSelection = selection;
     state.betEntryLabel = entryLabel;
     state.betStrength = 0;
+    state.betStartedAt = spin.settledAt || new Date().toISOString();
+    state.betTriggerNumbers = availableSpins.slice(0, ENTRY_STREAK).map((item) => item.number);
     state.gale = 0;
     await saveState(state);
     return "column_strategy_ready";
@@ -340,6 +364,10 @@ async function processSpin(
     state.betSelection = selection;
     state.betEntryLabel = entryLabel;
     state.betStrength = 0;
+    state.betStartedAt = spin.settledAt || new Date().toISOString();
+    state.betTriggerNumbers = availableSpins
+      .slice(0, DOZEN_ENTRY_STREAK)
+      .map((item) => item.number);
     state.gale = 0;
     await saveState(state);
     return "dozen_strategy_ready";

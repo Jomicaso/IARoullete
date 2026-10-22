@@ -13,6 +13,8 @@ de resultados na mesma coluna ou dúzia em tempo real.
 - Acompanha cada entrada, até 3 gales, GREEN e RED em tempo real.
 - Mantém a contagem diária de GREEN e RED no horário de Lisboa.
 - Envia os avisos, a entrada e os resultados para o Telegram.
+- O comando `/stats` separa colunas e dúzias por GREEN direto, G1, G2, G3 e RED.
+- Conserva os últimos 500 sinais detalhados para comparação.
 
 A roleta é aleatória e o resultado seguinte não pode ser garantido.
 
