@@ -174,6 +174,10 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
 
         return Response.json({
           ok: database === "ready" && telegram === "ready",
+          features: {
+            statsCommand: "/stats",
+            detailedSignalRetention: 500,
+          },
           configuration,
           database,
           databaseReason,
