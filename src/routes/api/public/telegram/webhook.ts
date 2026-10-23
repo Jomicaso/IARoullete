@@ -35,6 +35,8 @@ type PerformanceRecord = {
   fixedPlanNet?: number;
 };
 
+const DAILY_BANKROLL = 20;
+
 function lisbonDay() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Lisbon" });
 }
@@ -79,9 +81,11 @@ function fixedPlanStats(records: PerformanceRecord[]) {
 
   return (
     `<b>PLANO FIXO (€1 + €1, SEM ZERO)</b>\n` +
+    `Banca inicial: ${euro(DAILY_BANKROLL)}\n` +
     `Apostado: ${euro(totals.staked)}\n` +
     `Lucros: +${euro(totals.profits)} | Prejuízos: -${euro(totals.losses)}\n` +
-    `Saldo do dia: <b>${euro(totals.net, true)}</b>\n` +
+    `Saldo das apostas: <b>${euro(totals.net, true)}</b>\n` +
+    `Banca atual: <b>${euro(DAILY_BANKROLL + totals.net)}</b>\n` +
     `<i>Sinais contabilizados neste plano: ${financialRecords.length}</i>`
   );
 }
@@ -214,6 +218,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             statsCommand: "/stats",
             detailedSignalRetention: 500,
             fixedPlanDailyBalance: true,
+            dailyBankrollEuros: DAILY_BANKROLL,
           },
           configuration,
           database,
