@@ -101,7 +101,7 @@ function Index() {
           const selected = [1, 2, 3].filter((group) => group !== excluded);
           const marketLabel = columnReady ? "Colunas" : "Dúzias";
           const unit = columnReady ? "colunas" : "dúzias";
-          const entryLabel = `${selected[0]}ª e ${selected[1]}ª ${unit} + zero`;
+          const entryLabel = `${selected[0]}ª e ${selected[1]}ª ${unit}`;
           const patternLabel = columnReady
             ? `Quatro resultados seguidos na coluna ${streak.column}`
             : `Quatro resultados seguidos na ${dozenStreak.dozen}ª dúzia`;
@@ -145,7 +145,7 @@ function Index() {
   const excluded = columnReady ? streak.column : dozenStreak.dozen;
   const selectedGroups = [1, 2, 3].filter((group) => group !== excluded);
   const activeMarket = columnReady ? "colunas" : "dúzias";
-  const entryLabel = `${selectedGroups[0]}ª e ${selectedGroups[1]}ª ${activeMarket} + zero`;
+  const entryLabel = `${selectedGroups[0]}ª e ${selectedGroups[1]}ª ${activeMarket}`;
   const activePattern = columnReady
     ? `Quatro resultados seguidos na coluna ${streak.column}`
     : `Quatro resultados seguidos na ${dozenStreak.dozen}ª dúzia`;
@@ -168,7 +168,7 @@ function Index() {
                 </p>
                 <p className="mt-1 text-sm opacity-90">{banner.numbers.join(" · ")}</p>
                 <p className="mt-1 text-xs font-bold opacity-90">
-                  Cobrir o zero · Máximo de 3 gales
+                  Sem aposta no zero · Máximo de 3 gales
                 </p>
               </div>
               <button
@@ -188,7 +188,7 @@ function Index() {
           <h1 className="mt-1 text-2xl font-bold leading-tight">IARoullete — Padrões de Jogo</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Procura quatro resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada
-            nas outras duas opções, com cobertura do zero e até três gales. O padrão não garante o
+            nas outras duas opções, sem aposta no zero e até três gales. O padrão não garante o
             próximo resultado.
           </p>
         </header>

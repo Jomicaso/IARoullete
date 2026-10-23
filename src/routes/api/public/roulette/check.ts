@@ -34,6 +34,8 @@ type PerformanceRecord = {
   finishedAt: string;
   finalNumber: number;
   triggerNumbers: number[];
+  fixedPlanStaked?: number;
+  fixedPlanNet?: number;
 };
 
 type State = {
@@ -67,7 +69,7 @@ const defaultState: State = {
   lastProcessedSpinId: null,
   betMarket: "columns",
   betSelection: "exclude:1",
-  betEntryLabel: "2ª e 3ª colunas + zero",
+  betEntryLabel: "2ª e 3ª colunas",
   betStrength: 0,
   betStartedAt: null,
   betTriggerNumbers: [],
@@ -121,8 +123,8 @@ async function loadState(): Promise<State> {
     if (!saved.betMarket && saved.betColumn && saved.betColumn >= 1 && saved.betColumn <= 3) {
       state.betMarket = "columns";
       state.betSelection = `exclude:${saved.betColumn}`;
-      state.betEntryLabel = strategyEntryLabel(state.betMarket, state.betSelection);
     }
+    state.betEntryLabel = strategyEntryLabel(state.betMarket, state.betSelection);
     return state;
   } catch {
     return { ...defaultState };
@@ -142,6 +144,8 @@ function recordPerformance(state: State, spin: Spin, green: boolean) {
   const day = new Date(finishedAt).toLocaleDateString("en-CA", {
     timeZone: "Europe/Lisbon",
   });
+  const attempts = green ? state.gale + 1 : MAX_GALES + 1;
+  const fixedPlanStaked = attempts * 2;
   state.performanceRecords.push({
     market: state.betMarket,
     selection: state.betSelection,
@@ -160,6 +164,8 @@ function recordPerformance(state: State, spin: Spin, green: boolean) {
     finishedAt,
     finalNumber: spin.number,
     triggerNumbers: state.betTriggerNumbers,
+    fixedPlanStaked,
+    fixedPlanNet: green ? 3 - fixedPlanStaked : -fixedPlanStaked,
   });
   state.performanceRecords = state.performanceRecords.slice(-500);
 }

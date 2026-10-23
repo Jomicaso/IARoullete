@@ -7,13 +7,13 @@ de resultados na mesma coluna ou dúzia em tempo real.
 
 - Envia pré-alertas quando aparecem 2 e 3 resultados seguidos na mesma coluna.
 - Emite o sinal apenas no quarto resultado consecutivo nessa coluna.
-- Indica a entrada nas outras duas colunas, com cobertura do zero.
+- Indica a entrada nas outras duas colunas, sem cobertura do zero.
 - Emite também um sinal após quatro resultados consecutivos na mesma dúzia.
-- Nesse sinal, indica a entrada nas outras duas dúzias, com cobertura do zero.
+- Nesse sinal, indica a entrada nas outras duas dúzias, sem cobertura do zero.
 - Acompanha cada entrada, até 3 gales, GREEN e RED em tempo real.
 - Mantém a contagem diária de GREEN e RED no horário de Lisboa.
 - Envia os avisos, a entrada e os resultados para o Telegram.
-- O comando `/stats` separa colunas e dúzias por GREEN direto, G1, G2, G3 e RED.
+- O comando `/stats` separa colunas e dúzias por GREEN direto, G1, G2, G3 e RED, e calcula o saldo diário de um plano fixo de €1 em cada opção, sem aposta no zero.
 - Conserva os últimos 500 sinais detalhados para comparação.
 
 A roleta é aleatória e o resultado seguinte não pode ser garantido.

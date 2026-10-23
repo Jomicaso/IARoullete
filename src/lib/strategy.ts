@@ -72,12 +72,12 @@ function candidates(): Candidate[] {
       market: "columns" as const,
       marketLabel: "Colunas",
       selection: `exclude:${excluded}`,
-      entryLabel: `${selected[0]}ª e ${selected[1]}ª colunas + zero`,
-      baselineRate: 25 / 37,
-      stakeUnits: 2.1,
-      matches: (spin: Spin) => spin.number === 0 || columnOf(spin.number) !== excluded,
+      entryLabel: `${selected[0]}ª e ${selected[1]}ª colunas`,
+      baselineRate: 24 / 37,
+      stakeUnits: 2,
+      matches: (spin: Spin) => spin.number !== 0 && columnOf(spin.number) !== excluded,
       profitUnits: (spin: Spin) =>
-        spin.number === 0 ? 1.5 : columnOf(spin.number) !== excluded ? 0.9 : -2.1,
+        spin.number !== 0 && columnOf(spin.number) !== excluded ? 1 : -2,
       context: (spin: Spin) => {
         const column = columnOf(spin.number);
         return column === 0 ? null : `coluna:${column}`;
@@ -91,12 +91,12 @@ function candidates(): Candidate[] {
       market: "dozens" as const,
       marketLabel: "Dúzias",
       selection: `exclude:${excluded}`,
-      entryLabel: `${selected[0]}ª e ${selected[1]}ª dúzias + zero`,
-      baselineRate: 25 / 37,
-      stakeUnits: 2.1,
-      matches: (spin: Spin) => spin.number === 0 || dozenOf(spin.number) !== excluded,
+      entryLabel: `${selected[0]}ª e ${selected[1]}ª dúzias`,
+      baselineRate: 24 / 37,
+      stakeUnits: 2,
+      matches: (spin: Spin) => spin.number !== 0 && dozenOf(spin.number) !== excluded,
       profitUnits: (spin: Spin) =>
-        spin.number === 0 ? 1.5 : dozenOf(spin.number) !== excluded ? 0.9 : -2.1,
+        spin.number !== 0 && dozenOf(spin.number) !== excluded ? 1 : -2,
       context: (spin: Spin) => {
         const dozen = dozenOf(spin.number);
         return dozen === 0 ? null : `dúzia:${dozen}`;
@@ -109,70 +109,66 @@ function candidates(): Candidate[] {
       market: "color",
       marketLabel: "Cor",
       selection: "red",
-      entryLabel: "vermelho + zero",
-      baselineRate: 19 / 37,
-      stakeUnits: 1.05,
-      matches: (spin) => spin.number === 0 || colorOf(spin) === "red",
-      profitUnits: (spin) => (spin.number === 0 ? 0.75 : colorOf(spin) === "red" ? 0.95 : -1.05),
+      entryLabel: "vermelho",
+      baselineRate: 18 / 37,
+      stakeUnits: 1,
+      matches: (spin) => colorOf(spin) === "red",
+      profitUnits: (spin) => (colorOf(spin) === "red" ? 1 : -1),
       context: (spin) => colorOf(spin),
     },
     {
       market: "color",
       marketLabel: "Cor",
       selection: "black",
-      entryLabel: "preto + zero",
-      baselineRate: 19 / 37,
-      stakeUnits: 1.05,
-      matches: (spin) => spin.number === 0 || colorOf(spin) === "black",
-      profitUnits: (spin) => (spin.number === 0 ? 0.75 : colorOf(spin) === "black" ? 0.95 : -1.05),
+      entryLabel: "preto",
+      baselineRate: 18 / 37,
+      stakeUnits: 1,
+      matches: (spin) => colorOf(spin) === "black",
+      profitUnits: (spin) => (colorOf(spin) === "black" ? 1 : -1),
       context: (spin) => colorOf(spin),
     },
     {
       market: "parity",
       marketLabel: "Paridade",
       selection: "even",
-      entryLabel: "par + zero",
-      baselineRate: 19 / 37,
-      stakeUnits: 1.05,
-      matches: (spin) => spin.number === 0 || parityOf(spin.number) === "even",
-      profitUnits: (spin) =>
-        spin.number === 0 ? 0.75 : parityOf(spin.number) === "even" ? 0.95 : -1.05,
+      entryLabel: "par",
+      baselineRate: 18 / 37,
+      stakeUnits: 1,
+      matches: (spin) => parityOf(spin.number) === "even",
+      profitUnits: (spin) => (parityOf(spin.number) === "even" ? 1 : -1),
       context: (spin) => parityOf(spin.number),
     },
     {
       market: "parity",
       marketLabel: "Paridade",
       selection: "odd",
-      entryLabel: "ímpar + zero",
-      baselineRate: 19 / 37,
-      stakeUnits: 1.05,
-      matches: (spin) => spin.number === 0 || parityOf(spin.number) === "odd",
-      profitUnits: (spin) =>
-        spin.number === 0 ? 0.75 : parityOf(spin.number) === "odd" ? 0.95 : -1.05,
+      entryLabel: "ímpar",
+      baselineRate: 18 / 37,
+      stakeUnits: 1,
+      matches: (spin) => parityOf(spin.number) === "odd",
+      profitUnits: (spin) => (parityOf(spin.number) === "odd" ? 1 : -1),
       context: (spin) => parityOf(spin.number),
     },
     {
       market: "range",
       marketLabel: "Baixo/Alto",
       selection: "low",
-      entryLabel: "1–18 + zero",
-      baselineRate: 19 / 37,
-      stakeUnits: 1.05,
-      matches: (spin) => spin.number === 0 || rangeOf(spin.number) === "low",
-      profitUnits: (spin) =>
-        spin.number === 0 ? 0.75 : rangeOf(spin.number) === "low" ? 0.95 : -1.05,
+      entryLabel: "1–18",
+      baselineRate: 18 / 37,
+      stakeUnits: 1,
+      matches: (spin) => rangeOf(spin.number) === "low",
+      profitUnits: (spin) => (rangeOf(spin.number) === "low" ? 1 : -1),
       context: (spin) => rangeOf(spin.number),
     },
     {
       market: "range",
       marketLabel: "Baixo/Alto",
       selection: "high",
-      entryLabel: "19–36 + zero",
-      baselineRate: 19 / 37,
-      stakeUnits: 1.05,
-      matches: (spin) => spin.number === 0 || rangeOf(spin.number) === "high",
-      profitUnits: (spin) =>
-        spin.number === 0 ? 0.75 : rangeOf(spin.number) === "high" ? 0.95 : -1.05,
+      entryLabel: "19–36",
+      baselineRate: 18 / 37,
+      stakeUnits: 1,
+      matches: (spin) => rangeOf(spin.number) === "high",
+      profitUnits: (spin) => (rangeOf(spin.number) === "high" ? 1 : -1),
       context: (spin) => rangeOf(spin.number),
     },
   ];
@@ -214,7 +210,7 @@ export function strategyWins(spin: Spin, market: StrategyMarket, selection: stri
 export function strategyEntryLabel(market: StrategyMarket, selection: string) {
   return (
     candidates().find((item) => item.market === market && item.selection === selection)
-      ?.entryLabel ?? "estratégia selecionada + zero"
+      ?.entryLabel ?? "estratégia selecionada"
   );
 }
 

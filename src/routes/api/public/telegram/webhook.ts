@@ -31,6 +31,8 @@ type PerformanceRecord = {
   green?: boolean;
   gale?: number;
   day?: string;
+  fixedPlanStaked?: number;
+  fixedPlanNet?: number;
 };
 
 function lisbonDay() {
@@ -51,6 +53,39 @@ function strategyStats(label: string, market: string, records: PerformanceRecord
   );
 }
 
+function euro(value: number, signed = false) {
+  const normalized = Math.abs(value) < 0.005 ? 0 : value;
+  const sign = signed && normalized > 0 ? "+" : "";
+  return `${sign}${normalized.toFixed(2).replace(".", ",")} €`;
+}
+
+function fixedPlanStats(records: PerformanceRecord[]) {
+  const financialRecords = records.filter(
+    (record) =>
+      typeof record.fixedPlanStaked === "number" && typeof record.fixedPlanNet === "number",
+  );
+  const totals = financialRecords.reduce(
+    (acc, record) => {
+      const staked = record.fixedPlanStaked ?? 0;
+      const net = record.fixedPlanNet ?? 0;
+      acc.staked += staked;
+      acc.net += net;
+      if (net > 0) acc.profits += net;
+      if (net < 0) acc.losses += Math.abs(net);
+      return acc;
+    },
+    { staked: 0, profits: 0, losses: 0, net: 0 },
+  );
+
+  return (
+    `<b>PLANO FIXO (€1 + €1, SEM ZERO)</b>\n` +
+    `Apostado: ${euro(totals.staked)}\n` +
+    `Lucros: +${euro(totals.profits)} | Prejuízos: -${euro(totals.losses)}\n` +
+    `Saldo do dia: <b>${euro(totals.net, true)}</b>\n` +
+    `<i>Sinais contabilizados neste plano: ${financialRecords.length}</i>`
+  );
+}
+
 function statsMessage(records: PerformanceRecord[]) {
   const today = lisbonDay();
   const todayRecords = records.filter((record) => record.day === today);
@@ -65,6 +100,7 @@ function statsMessage(records: PerformanceRecord[]) {
     `${strategyStats("DÚZIAS", "dozens", todayRecords)}\n\n` +
     `<b>TOTAL</b>\n` +
     `Sinais: ${todayRecords.length} | 🟢 ${greens} | 🔴 ${reds} | Acerto: ${accuracy}\n\n` +
+    `${fixedPlanStats(todayRecords)}\n\n` +
     `<i>Dados detalhados recolhidos desde a ativação desta função.</i>`
   );
 }
@@ -177,6 +213,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           features: {
             statsCommand: "/stats",
             detailedSignalRetention: 500,
+            fixedPlanDailyBalance: true,
           },
           configuration,
           database,
@@ -260,7 +297,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               await telegramCall("sendMessage", {
                 chat_id: chatId,
                 text:
-                  "IARoullete ligada. O bot procura 4 resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada nas outras duas opções, com cobertura do zero e até 3 gales.\n\n" +
+                  "IARoullete ligada. O bot procura 4 resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada nas outras duas opções, sem cobertura do zero e até 3 gales.\n\n" +
                   "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida.\n\n" +
                   "Envie /stats para consultar as estatísticas de hoje." +
                   affiliateLinks(),
@@ -328,7 +365,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         await telegramCall("sendMessage", {
           chat_id: chatId,
           text:
-            "IARoullete ligada! O bot procura 4 resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada nas outras duas opções, com cobertura do zero e até 3 gales.\n\n" +
+            "IARoullete ligada! O bot procura 4 resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada nas outras duas opções, sem cobertura do zero e até 3 gales.\n\n" +
             "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida.\n\n" +
             "Envie /stats para consultar as estatísticas de hoje.\n" +
             "Envie /stop para desligar." +
