@@ -6,6 +6,7 @@ import {
   DOZEN_ENTRY_STREAK,
   ENTRY_STREAK,
   fetchSpins,
+  galePlanOutcome,
   MAX_GALES,
   RouletteRateLimitError,
   TelegramRateLimitError,
@@ -20,7 +21,7 @@ import {
 } from "@/lib/strategy";
 
 const STATE_KEY = "ia_roulette_state";
-const STRATEGY_VERSION = "columns-4-v2";
+const STRATEGY_VERSION = "columns-dozens-5-v3";
 
 type PerformanceRecord = {
   market: StrategyMarket;
@@ -36,12 +37,15 @@ type PerformanceRecord = {
   triggerNumbers: number[];
   fixedPlanStaked?: number;
   fixedPlanNet?: number;
+  galePlanStaked?: number;
+  galePlanNet?: number;
 };
 
 type State = {
   strategyVersion: string;
   last2AlertedSpinId: string | null;
   last3AlertedSpinId: string | null;
+  last4AlertedSpinId: string | null;
   lastProcessedSpinId: string | null;
   // active bet
   betMarket: StrategyMarket;
@@ -66,6 +70,7 @@ const defaultState: State = {
   strategyVersion: STRATEGY_VERSION,
   last2AlertedSpinId: null,
   last3AlertedSpinId: null,
+  last4AlertedSpinId: null,
   lastProcessedSpinId: null,
   betMarket: "columns",
   betSelection: "exclude:1",
@@ -114,11 +119,11 @@ async function loadState(): Promise<State> {
       state.cooldownSpins = 0;
       state.last2AlertedSpinId = null;
       state.last3AlertedSpinId = null;
+      state.last4AlertedSpinId = null;
       state.day = "";
       state.wins = 0;
       state.losses = 0;
       state.winStreak = 0;
-      state.performanceRecords = [];
     }
     if (!saved.betMarket && saved.betColumn && saved.betColumn >= 1 && saved.betColumn <= 3) {
       state.betMarket = "columns";
@@ -144,8 +149,7 @@ function recordPerformance(state: State, spin: Spin, green: boolean) {
   const day = new Date(finishedAt).toLocaleDateString("en-CA", {
     timeZone: "Europe/Lisbon",
   });
-  const attempts = green ? state.gale + 1 : MAX_GALES + 1;
-  const fixedPlanStaked = attempts * 2;
+  const galePlan = galePlanOutcome(state.gale, green);
   state.performanceRecords.push({
     market: state.betMarket,
     selection: state.betSelection,
@@ -164,8 +168,8 @@ function recordPerformance(state: State, spin: Spin, green: boolean) {
     finishedAt,
     finalNumber: spin.number,
     triggerNumbers: state.betTriggerNumbers,
-    fixedPlanStaked,
-    fixedPlanNet: green ? 3 - fixedPlanStaked : -fixedPlanStaked,
+    galePlanStaked: galePlan.staked,
+    galePlanNet: galePlan.net,
   });
   state.performanceRecords = state.performanceRecords.slice(-500);
 }
@@ -405,6 +409,20 @@ async function processSpin(
       );
     await saveState(state);
     return "pattern_3";
+  }
+
+  if ((streak.count === 4 || dozenStreak.count === 4) && spin.id !== state.last4AlertedSpinId) {
+    state.last4AlertedSpinId = spin.id;
+    if (deliver)
+      await broadcast(
+        `${spin.id}:pattern:4`,
+        `🔎 <b>A DETECTAR PADRÃO</b>\n` +
+          `⏳ <b>ESPERE A JOGADA!</b>\n` +
+          `🕒 ${hora}` +
+          affiliateLinks(),
+      );
+    await saveState(state);
+    return "pattern_4";
   }
 
   await saveState(state);

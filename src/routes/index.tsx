@@ -103,8 +103,8 @@ function Index() {
           const unit = columnReady ? "colunas" : "dúzias";
           const entryLabel = `${selected[0]}ª e ${selected[1]}ª ${unit}`;
           const patternLabel = columnReady
-            ? `Quatro resultados seguidos na coluna ${streak.column}`
-            : `Quatro resultados seguidos na ${dozenStreak.dozen}ª dúzia`;
+            ? `Cinco resultados seguidos na coluna ${streak.column}`
+            : `Cinco resultados seguidos na ${dozenStreak.dozen}ª dúzia`;
           const label = `Entrada: ${entryLabel}`;
           const item: AlertItem = {
             id: head.id,
@@ -141,14 +141,16 @@ function Index() {
   const columnReady = streak.count === ENTRY_STREAK;
   const dozenReady = dozenStreak.count === DOZEN_ENTRY_STREAK;
   const active = columnReady || dozenReady;
-  const detecting = (streak.count >= 2 && streak.count < ENTRY_STREAK) || dozenStreak.count === 2;
+  const detecting =
+    (streak.count >= 2 && streak.count < ENTRY_STREAK) ||
+    (dozenStreak.count >= 2 && dozenStreak.count < DOZEN_ENTRY_STREAK);
   const excluded = columnReady ? streak.column : dozenStreak.dozen;
   const selectedGroups = [1, 2, 3].filter((group) => group !== excluded);
   const activeMarket = columnReady ? "colunas" : "dúzias";
   const entryLabel = `${selectedGroups[0]}ª e ${selectedGroups[1]}ª ${activeMarket}`;
   const activePattern = columnReady
-    ? `Quatro resultados seguidos na coluna ${streak.column}`
-    : `Quatro resultados seguidos na ${dozenStreak.dozen}ª dúzia`;
+    ? `Cinco resultados seguidos na coluna ${streak.column}`
+    : `Cinco resultados seguidos na ${dozenStreak.dozen}ª dúzia`;
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 text-foreground">
@@ -187,7 +189,7 @@ function Index() {
           <p className="text-xs uppercase tracking-[0.2em] text-primary">Ao vivo · Evolution</p>
           <h1 className="mt-1 text-2xl font-bold leading-tight">IARoullete — Padrões de Jogo</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Procura quatro resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada
+            Procura cinco resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada
             nas outras duas opções, sem aposta no zero e até três gales. O padrão não garante o
             próximo resultado.
           </p>

@@ -10,9 +10,20 @@ const SPINS_API =
 const HISTORY_CACHE_MS = 10 * 60 * 1_000;
 let historyCache: { expiresAt: number; spins: Spin[] } | null = null;
 
-export const ENTRY_STREAK = 4;
-export const DOZEN_ENTRY_STREAK = 4;
+export const ENTRY_STREAK = 5;
+export const DOZEN_ENTRY_STREAK = 5;
 export const MAX_GALES = 3;
+export const GALE_STAKES_PER_OPTION = [1, 2, 6, 18] as const;
+
+export function galePlanOutcome(gale: number, green: boolean) {
+  const attempts = green ? gale + 1 : MAX_GALES + 1;
+  const staked = GALE_STAKES_PER_OPTION.slice(0, attempts).reduce(
+    (total, stake) => total + stake * 2,
+    0,
+  );
+  const winningStake = green ? (GALE_STAKES_PER_OPTION[gale] ?? 0) : 0;
+  return { staked, net: green ? winningStake * 3 - staked : -staked };
+}
 const MISTBET_LINK = "https://msbt.io/5K9kF";
 const LEON_LINK = "https://9behi4y9oh.com/?serial=57437&amp;creative_id=453&amp;anid=";
 

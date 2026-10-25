@@ -33,9 +33,11 @@ type PerformanceRecord = {
   day?: string;
   fixedPlanStaked?: number;
   fixedPlanNet?: number;
+  galePlanStaked?: number;
+  galePlanNet?: number;
 };
 
-const DAILY_BANKROLL = 20;
+const DAILY_BANKROLL = 100;
 
 function lisbonDay() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Lisbon" });
@@ -61,15 +63,14 @@ function euro(value: number, signed = false) {
   return `${sign}${normalized.toFixed(2).replace(".", ",")} €`;
 }
 
-function fixedPlanStats(records: PerformanceRecord[]) {
+function galePlanStats(records: PerformanceRecord[]) {
   const financialRecords = records.filter(
-    (record) =>
-      typeof record.fixedPlanStaked === "number" && typeof record.fixedPlanNet === "number",
+    (record) => typeof record.galePlanStaked === "number" && typeof record.galePlanNet === "number",
   );
   const totals = financialRecords.reduce(
     (acc, record) => {
-      const staked = record.fixedPlanStaked ?? 0;
-      const net = record.fixedPlanNet ?? 0;
+      const staked = record.galePlanStaked ?? 0;
+      const net = record.galePlanNet ?? 0;
       acc.staked += staked;
       acc.net += net;
       if (net > 0) acc.profits += net;
@@ -80,7 +81,8 @@ function fixedPlanStats(records: PerformanceRecord[]) {
   );
 
   return (
-    `<b>PLANO FIXO (€1 + €1, SEM ZERO)</b>\n` +
+    `<b>PLANO COM GALE, SEM ZERO</b>\n` +
+    `Entrada €1+€1 | G1 €2+€2 | G2 €6+€6 | G3 €18+€18\n` +
     `Banca inicial: ${euro(DAILY_BANKROLL)}\n` +
     `Apostado: ${euro(totals.staked)}\n` +
     `Lucros: +${euro(totals.profits)} | Prejuízos: -${euro(totals.losses)}\n` +
@@ -104,7 +106,7 @@ function statsMessage(records: PerformanceRecord[]) {
     `${strategyStats("DÚZIAS", "dozens", todayRecords)}\n\n` +
     `<b>TOTAL</b>\n` +
     `Sinais: ${todayRecords.length} | 🟢 ${greens} | 🔴 ${reds} | Acerto: ${accuracy}\n\n` +
-    `${fixedPlanStats(todayRecords)}\n\n` +
+    `${galePlanStats(todayRecords)}\n\n` +
     `<i>Dados detalhados recolhidos desde a ativação desta função.</i>`
   );
 }
@@ -217,7 +219,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           features: {
             statsCommand: "/stats",
             detailedSignalRetention: 500,
-            fixedPlanDailyBalance: true,
+            galePlanDailyBalance: true,
             dailyBankrollEuros: DAILY_BANKROLL,
           },
           configuration,
@@ -302,7 +304,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               await telegramCall("sendMessage", {
                 chat_id: chatId,
                 text:
-                  "IARoullete ligada. O bot procura 4 resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada nas outras duas opções, sem cobertura do zero e até 3 gales.\n\n" +
+                  "IARoullete ligada. O bot procura 5 resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada nas outras duas opções, sem cobertura do zero e até 3 gales.\n\n" +
                   "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida.\n\n" +
                   "Envie /stats para consultar as estatísticas de hoje." +
                   affiliateLinks(),
@@ -370,7 +372,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         await telegramCall("sendMessage", {
           chat_id: chatId,
           text:
-            "IARoullete ligada! O bot procura 4 resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada nas outras duas opções, sem cobertura do zero e até 3 gales.\n\n" +
+            "IARoullete ligada! O bot procura 5 resultados seguidos na mesma coluna ou na mesma dúzia e indica a entrada nas outras duas opções, sem cobertura do zero e até 3 gales.\n\n" +
             "A análise acompanha resultados ao vivo; a taxa de acerto não é garantida.\n\n" +
             "Envie /stats para consultar as estatísticas de hoje.\n" +
             "Envie /stop para desligar." +
