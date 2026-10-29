@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHash, timingSafeEqual } from "crypto";
-import { affiliateLinks, telegramCall } from "@/lib/roulette";
+import { affiliateLinks, GALE_STAKES_PER_OPTION, telegramCall } from "@/lib/roulette";
 
 function expectedSecret() {
   const explicitSecret = process.env["TELEGRAM_WEBHOOK_SECRET"];
@@ -82,7 +82,10 @@ function galePlanStats(records: PerformanceRecord[]) {
 
   return (
     `<b>PLANO COM GALE, SEM ZERO</b>\n` +
-    `Entrada €1+€1 | G1 €2+€2 | G2 €6+€6 | G3 €18+€18\n` +
+    `Entrada €${GALE_STAKES_PER_OPTION[0]}+€${GALE_STAKES_PER_OPTION[0]} | ` +
+    `G1 €${GALE_STAKES_PER_OPTION[1]}+€${GALE_STAKES_PER_OPTION[1]} | ` +
+    `G2 €${GALE_STAKES_PER_OPTION[2]}+€${GALE_STAKES_PER_OPTION[2]} | ` +
+    `G3 €${GALE_STAKES_PER_OPTION[3]}+€${GALE_STAKES_PER_OPTION[3]}\n` +
     `Banca inicial: ${euro(DAILY_BANKROLL)}\n` +
     `Apostado: ${euro(totals.staked)}\n` +
     `Lucros: +${euro(totals.profits)} | Prejuízos: -${euro(totals.losses)}\n` +
@@ -221,6 +224,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             detailedSignalRetention: 500,
             galePlanDailyBalance: true,
             dailyBankrollEuros: DAILY_BANKROLL,
+            galeStakesPerOption: GALE_STAKES_PER_OPTION,
           },
           configuration,
           database,

@@ -13,7 +13,7 @@ let historyCache: { expiresAt: number; spins: Spin[] } | null = null;
 export const ENTRY_STREAK = 5;
 export const DOZEN_ENTRY_STREAK = 5;
 export const MAX_GALES = 3;
-export const GALE_STAKES_PER_OPTION = [1, 2, 6, 18] as const;
+export const GALE_STAKES_PER_OPTION = [1, 3, 9, 27] as const;
 
 export function galePlanOutcome(gale: number, green: boolean) {
   const attempts = green ? gale + 1 : MAX_GALES + 1;
